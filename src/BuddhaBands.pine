@@ -1,0 +1,283 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+//@version=6
+indicator(
+  title = 'Buddha Bands', 
+  shorttitle = 'Bands', 
+  overlay = true)
+
+//----------------------------------------------------------------------------------------------------< CONSTANTS >---//
+
+//----------------------------------------------------< COLORs
+const color CLR_A_SLOW = color.rgb(120, 123, 134), const color CLR_A_FAST = color.rgb(120, 123, 134)
+const color CLR_B_SLOW = color.rgb(000, 255, 255), const color CLR_B_FAST = color.rgb(000, 000, 255)
+const color CLR_C_SLOW = color.rgb(255, 255, 000), const color CLR_C_FAST = color.rgb(255, 128, 000)
+const color CLR_D_SLOW = color.rgb(255, 055, 255), const color CLR_D_FAST = color.rgb(128, 000, 128)
+
+//----------------------------------------------------< STRINGs
+
+const string g_A = 'Moving Average - Band A - Slow / Fast'
+const string g_B = 'Moving Average - Band B - Slow / Fast'
+const string g_C = 'Moving Average - Band C - Slow / Fast'
+const string g_D = 'Moving Average - Band D - Slow / Fast'
+const string g_S = 'Style'
+
+//----------------------------------------------------< ENUMs
+
+enum State
+    On = 'ON'
+    Off = 'OFF'
+
+enum Ma
+    Ema = 'EMA'
+    Rma = 'RMA'
+    Sma = 'SMA'
+    Vwma = 'VWMA'
+    Wma = 'WMA'
+
+//-------------------------------------------------------------------------------------------------------< INPUTS >---//
+
+i_A_SlowInt = input.int(20, '', group = g_A, inline = 'Slow')
+i_A_SlowClr = input.color(CLR_A_SLOW, '', group = g_A, inline = 'Slow')
+i_A_State   = input.enum(State.On, '', group = g_A, inline = 'Slow')
+i_A_FastInt = input.int(21, '', group = g_A, inline = 'Fast')
+i_A_FastClr = input.color(CLR_A_FAST, '', group = g_A, inline = 'Fast')
+i_A_MaSrc   = input.enum(Ma.Sma, '', group = g_A, inline = 'Fast')
+
+i_B_SlowInt = input.int(50, '', group = g_B, inline = 'Slow')
+i_B_SlowClr = input.color(CLR_B_SLOW, '', group = g_B, inline = 'Slow')
+i_B_State   = input.enum(State.On, '', group = g_B, inline = 'Slow')
+i_B_FastInt = input.int(55, '', group = g_B, inline = 'Fast')
+i_B_FastClr = input.color(CLR_B_FAST, '', group = g_B, inline = 'Fast')
+i_B_MaSrc   = input.enum(Ma.Sma, '', group = g_B, inline = 'Fast')
+
+i_C_SlowInt = input.int(200, '', group = g_C, inline = 'Slow')
+i_C_SlowClr = input.color(CLR_C_SLOW, '', group = g_C, inline = 'Slow')
+i_C_State   = input.enum(State.On, '', group = g_C, inline = 'Slow')
+i_C_FastInt = input.int(233, '', group = g_C, inline = 'Fast')
+i_C_FastClr = input.color(CLR_C_FAST, '', group = g_C, inline = 'Fast')
+i_C_MaSrc   = input.enum(Ma.Sma, '', group = g_C, inline = 'Fast')
+
+i_D_SlowInt = input.int(365, '', group = g_D, inline = 'Slow')
+i_D_SlowClr = input.color(CLR_D_SLOW, '', group = g_D, inline = 'Slow')
+i_D_State   = input.enum(State.On, '', group = g_D, inline = 'Slow')
+i_D_FastInt = input.int(377, '', group = g_D, inline = 'Fast')
+i_D_FastClr = input.color(CLR_D_FAST, '', group = g_D, inline = 'Fast')
+i_D_MaSrc   = input.enum(Ma.Sma, '', group = g_D, inline = 'Fast')
+
+i_Transp    = input.int(80,'Fill Transp', group = g_S)
+i_LwSlow    = input.int(3,'Slow Line Width', [1,2,3,4,5], group = g_S)
+i_LwFast    = input.int(1,'Fast Line Width', [1,2,3,4,5], group = g_S)
+i_LwExt     = input.int(1,'Extend Line Width', [1,2,3,4,5], group = g_S)
+
+//----------------------------------------------------------------------------------------------------< FUNCTIONS >---//
+
+// @function  - State Switch
+// @returns   - true or false
+switchState(simple State state) =>
+    switch state
+        State.On => true
+        State.Off => false
+
+
+// @function  - Switch formula use for moving averages.
+// @returns   - moving average data.
+switchMa(simple Ma option, simple int length) =>
+    movingAverageData = switch option
+        Ma.Ema => ta.ema(close, length)
+        Ma.Sma => ta.sma(close, length)
+        Ma.Rma => ta.rma(close, length)
+        Ma.Vwma => ta.vwma(close, length)
+        Ma.Wma => ta.wma(close, length)
+    movingAverageData
+
+
+switchFill(series float v1, series float v2, simple color clr1, simple color clr2) =>
+    _FillColor = v1 > v2 ? clr1 : clr2
+
+// @function     Time multiplyer based on current time period for Chart Point 1
+// @returns      Adjusted Time based on current timeframe
+timemult(int mult) =>
+    timeframe.multiplier * (
+      timeframe.isseconds ? 1000 : 
+      timeframe.isminutes ? 60000 : 
+      timeframe.isdaily ? 86400000 : 
+      timeframe.isweekly ? 604800000 : 
+      timeframe.ismonthly ? 2629800000 : 1) * mult
+
+
+slowCp1(float ma) =>
+    chart.point.from_time(last_bar_time, ma)
+slowCp2(float ma) =>
+    chart.point.from_time(last_bar_time + timemult(1), ma)
+
+fastCp1(float ma) =>
+    chart.point.from_time(last_bar_time, ma)
+fastCp2(float ma) =>
+    chart.point.from_time(last_bar_time + timemult(1), ma)
+
+//-------------------------------------------------------------------------------------------------< CALCULATIONS >---//
+
+ma_A_Slow = switchState(i_A_State) ? switchMa(i_A_MaSrc, i_A_SlowInt) : na
+ma_A_Fast = switchState(i_A_State) ? switchMa(i_A_MaSrc, i_A_FastInt) : na
+ma_A_Fill = switchState(i_A_State) ? switchFill(ma_A_Slow,ma_A_Fast,i_A_SlowClr,i_A_FastClr) : na
+
+ma_B_Slow = switchState(i_B_State) ? switchMa(i_B_MaSrc, i_B_SlowInt) : na
+ma_B_Fast = switchState(i_B_State) ? switchMa(i_B_MaSrc, i_B_FastInt) : na
+ma_B_Fill = switchState(i_B_State) ? switchFill(ma_B_Slow,ma_B_Fast,i_B_SlowClr,i_B_FastClr) : na
+
+ma_C_Slow = switchState(i_C_State) ? switchMa(i_C_MaSrc, i_C_SlowInt) : na
+ma_C_Fast = switchState(i_C_State) ? switchMa(i_C_MaSrc, i_C_FastInt) : na
+ma_C_Fill = switchState(i_C_State) ? switchFill(ma_C_Slow,ma_C_Fast,i_C_SlowClr,i_C_FastClr) : na
+
+ma_D_Slow = switchState(i_D_State) ? switchMa(i_D_MaSrc, i_D_SlowInt) : na
+ma_D_Fast = switchState(i_D_State) ? switchMa(i_D_MaSrc, i_D_FastInt) : na
+ma_D_Fill = switchState(i_D_State) ? switchFill(ma_D_Slow,ma_D_Fast,i_D_SlowClr,i_D_FastClr) : na
+
+//------------------------------------------------------------------------------------------------------< VISUALS >---//
+
+p_A_Slow = plot(ma_A_Slow, '', i_A_SlowClr, i_LwSlow)
+p_A_Fast = plot(ma_A_Fast, '', i_A_FastClr, i_LwFast)
+fill(p_A_Slow, p_A_Fast, color.new(ma_A_Fill, i_Transp))
+
+var line line_A_Slow = na
+if barstate.islast
+    if not na(line_A_Slow)
+        line.delete(line_A_Slow)
+    line_A_Slow := line.new(
+      first_point = slowCp1(ma_A_Slow), 
+      second_point = slowCp2(ma_A_Slow), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_A_SlowClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_A_Slow
+
+
+var line line_A_Fast = na
+if barstate.islast
+    if not na(line_A_Fast)
+        line.delete(line_A_Fast)
+    line_A_Fast := line.new(
+      first_point = fastCp1(ma_A_Fast), 
+      second_point = fastCp2(ma_A_Fast), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_A_FastClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_A_Fast
+
+
+p_B_Slow = plot(ma_B_Slow, '', i_B_SlowClr, i_LwSlow)
+p_B_Fast = plot(ma_B_Fast, '', i_B_FastClr, i_LwFast)
+fill(p_B_Slow, p_B_Fast, color.new(ma_B_Fill, i_Transp))
+
+var line line_B_Slow = na
+if barstate.islast
+    if not na(line_B_Slow)
+        line.delete(line_B_Slow)
+    line_B_Slow := line.new(
+      first_point = slowCp1(ma_B_Slow), 
+      second_point = slowCp2(ma_B_Slow), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_B_SlowClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_B_Slow
+
+
+var line line_B_Fast = na
+if barstate.islast
+    if not na(line_B_Fast)
+        line.delete(line_B_Fast)
+    line_B_Fast := line.new(
+      first_point = fastCp1(ma_B_Fast), 
+      second_point = fastCp2(ma_B_Fast), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_B_FastClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_B_Fast
+
+
+p_C_Slow = plot(ma_C_Slow, '', i_C_SlowClr, i_LwSlow)
+p_C_Fast = plot(ma_C_Fast, '', i_C_FastClr, i_LwFast)
+fill(p_C_Slow, p_C_Fast, color.new(ma_C_Fill, i_Transp))
+
+var line line_C_Slow = na
+if barstate.islast
+    if not na(line_C_Slow)
+        line.delete(line_C_Slow)
+    line_C_Slow := line.new(
+      first_point = slowCp1(ma_C_Slow), 
+      second_point = slowCp2(ma_C_Slow), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_C_SlowClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_C_Slow
+
+
+var line line_C_Fast = na
+if barstate.islast
+    if not na(line_C_Fast)
+        line.delete(line_C_Fast)
+    line_C_Fast := line.new(
+      first_point = fastCp1(ma_C_Fast), 
+      second_point = fastCp2(ma_C_Fast), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_C_FastClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_C_Fast
+
+
+p_D_Slow = plot(ma_D_Slow, '', i_D_SlowClr, i_LwSlow)
+p_D_Fast = plot(ma_D_Fast, '', i_D_FastClr, i_LwFast)
+fill(p_D_Slow, p_D_Fast, color.new(ma_D_Fill, i_Transp))
+
+var line line_D_Slow = na
+if barstate.islast
+    if not na(line_D_Slow)
+        line.delete(line_D_Slow)
+    line_D_Slow := line.new(
+      first_point = slowCp1(ma_D_Slow), 
+      second_point = slowCp2(ma_D_Slow), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_D_SlowClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_D_Slow
+
+
+var line line_D_Fast = na
+if barstate.islast
+    if not na(line_D_Fast)
+        line.delete(line_D_Fast)
+    line_D_Fast := line.new(
+      first_point = fastCp1(ma_D_Fast), 
+      second_point = fastCp2(ma_D_Fast), 
+      xloc = xloc.bar_time, 
+      extend = extend.right, 
+      color = i_D_FastClr, 
+      style = line.style_dotted, 
+      width = i_LwExt, 
+      force_overlay = true)
+    line_D_Fast
+
+//----------------------------------------------------< END-CODE >----------------------------------------------------//

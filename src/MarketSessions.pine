@@ -1,0 +1,388 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+//@version=6
+indicator(title = "Market Sessions", overlay = false)
+
+//----------------------------------------------------------------------------------------------------< CONSTANTs >---//
+
+//----------------------------------------------------< Session Colors
+// @variable - Color - Australia Session
+const color CLR_AU = color.rgb(255, 82, 82, 50)
+// @variable - Color - Asia Session
+const color CLR_AS = color.rgb(0, 188, 212, 50)
+// @variable - Color - India Session
+const color CLR_IN = color.rgb(0, 230, 118, 50)
+// @variable - Color - Europe Session
+const color CLR_EU = color.rgb(255, 235, 59, 50)
+// @variable - Color - US Session
+const color CLR_US = color.rgb(224, 64, 251, 50)
+// @variable - Color - Market Open
+const color CLR_O = color.rgb(0, 128, 0)
+// @variable - Color - Market Closed
+const color CLR_C = color.rgb(128, 0, 0)
+
+//----------------------------------------------------< Session Length
+// @variable - Australia Session 10:00–16:00 (6h)
+const int   MIN_AU = 360
+// @variable - Asia Session 09:00–17:00 (8h) – using SGX window
+const int   MIN_AS = 480
+// @variable - India Session 09:15–15:30 (6.25h)
+const int   MIN_IN = 375
+// @variable - Europe Session 08:00–16:30 (8.5h)
+const int   MIN_EU = 510
+// @variable - US Session 09:30–16:00 (6.5h)
+const int   MIN_US = 390
+
+//----------------------------------------------------< Table Colors
+// @variable - Table color
+const color CLR_BLACK = color.rgb(0,0,0)
+
+const color GRAY = color.rgb(120, 120, 120)
+
+//----------------------------------------------------< Table Strings
+const string g_AU = 'Australia (ASX)'
+const string g_AS = 'Asia (Tokyo/SGX)'
+const string g_IN = 'India (NSE)'
+const string g_EU = 'Europe (LDN/XETR)'
+const string g_US = 'America (NYSE)'
+const string g_Table  = 'Style - Session Panel'
+const string g_Session  = 'Style - Session Boxes'
+
+//----------------------------------------------------< ENUMs
+
+enum State
+    On = 'ON'
+    Off = 'OFF'
+
+enum Text
+    Tiny = 'Tiny'
+    Small = 'Small'
+    Normal = 'Normal'
+    Large = 'Large'
+    Huge = 'Huge'
+
+enum Border
+    Dash = 'Dashed'
+    Solid ='Solid'
+
+//----------------------------------------------------< TYPEs
+// @type - Session
+type Sess
+    bool   live
+    int    sBar
+    int    eBar
+    int    rBar
+    float  op
+    float  cl
+    float  hi
+    float  lo
+    color  base
+    string name
+    box    bx
+    label  lb
+
+//-------------------------------------------------------------------------------------------------------< INPUTs >---//
+
+i_Clr_AU = input.color(CLR_AU, '', group = g_AU, inline = '1')
+i_Use_AU = input.enum(State.On, '', group = g_AU, inline = '1')
+
+i_Clr_AS = input.color(CLR_AS, '', group = g_AS, inline = '1')
+i_Use_AS = input.enum(State.On, '', group = g_AS, inline = '1')
+
+i_Clr_IN = input.color(CLR_IN, '', group = g_IN, inline = '1')
+i_Use_IN = input.enum(State.On, '', group = g_IN, inline = '1')
+
+i_Clr_EU = input.color(CLR_EU, '', group = g_EU, inline = '1')
+i_Use_EU = input.enum(State.On, '', group = g_EU, inline = '1')
+
+i_Clr_US = input.color(CLR_US, '', group = g_US, inline = '1')
+i_Use_US = input.enum(State.On, '', group = g_US, inline = '1')
+
+i_Text_Size = input.enum(Text.Large, 'Text Size', group = g_Table, inline = '1')
+
+i_Style_Alpha = input.int(100, 'Transparency', group = g_Session, inline = '1', minval = 0, maxval = 100, step = 1)
+i_Style_Width = input.int(1, 'Border Width', group = g_Session, inline = '1', minval = 1, maxval = 4, step = 1)
+
+i_Style_Dash  = input.enum(Border.Dash, "Box Style",group = g_Session, inline = '2')
+
+//----------------------------------------------------------------------------------------------------< FUNCTIONS >---//
+
+// @function  - State Switch
+// @returns   - true or false
+switchState(simple State state) =>
+    switch state
+        State.On => true
+        State.Off => false
+
+
+// @function  - State Switch
+// @returns   - true or false
+switchBorder(simple Border style) =>
+    switch style
+        Border.Dash => line.style_dashed
+        Border.Solid => line.style_solid
+
+
+// --- Helper: bars in current TF for a number of minutes
+barsForMinutes(int mins) =>
+    // timeframe.in_seconds() is stable and DST-agnostic
+    tfSec = timeframe.in_seconds(timeframe.period)
+    tfSec <= 0 ? 0 : math.ceil((mins * 60.0) / tfSec)
+
+// ---------- Per-session state + drawing
+// --- start(): compute rBar from session minutes
+method start(Sess this, color _base, int sessionMin) =>
+    this.live := true
+    this.sBar := bar_index
+    this.eBar := bar_index
+    this.rBar := this.sBar + barsForMinutes(sessionMin)
+    this.op   := open
+    this.cl   := close
+    this.hi   := high
+    this.lo   := low
+    this.base := _base
+
+    this.bx := na(this.bx) ? box.new(
+      left = this.sBar, top = this.hi, right = this.rBar, bottom = this.lo,
+      border_color = this.base, border_width = i_Style_Width,
+      border_style = switchBorder(i_Style_Dash),
+      extend=extend.none, xloc=xloc.bar_index, bgcolor=color.new(this.base, i_Style_Alpha),
+      force_overlay = true)
+      : this.bx
+
+    box.set_left(this.bx, this.sBar)
+    box.set_right(this.bx, this.rBar)
+    box.set_top(this.bx, this.hi)
+    box.set_bottom(this.bx, this.lo)
+
+// --- update(): keep right side on rBar while live (if projecting)
+method update(Sess this) =>
+    this.eBar := bar_index
+    this.cl   := close
+    this.hi   := math.max(this.hi, high)
+    this.lo   := math.min(this.lo, low)
+    box.set_right(this.bx, this.rBar)
+    box.set_top(this.bx, this.hi)
+    box.set_bottom(this.bx, this.lo)
+
+// --- end(): leave the right side at rBar if projection is on
+method end(Sess this) =>
+    this.live := false
+    box.set_right(this.bx, this.rBar)
+
+
+//-----------------------------------------------------------------------------------------------------< Sessions >---//
+
+//----------------------------------------------------< Instances
+var Sess AU = Sess.new()
+var Sess AS = Sess.new()
+var Sess IN = Sess.new()
+var Sess EU = Sess.new()
+var Sess US = Sess.new()
+
+// @function    Drives Session Lifecycle for Boxes
+// @param s     (Sess)   session data
+// @param on    (bool)   transition: OFF -> ON  → open a new box
+// @param wasOn (bool)   transition: OFF -> ON  → open a new box
+// @param name  (string) Session Name
+// @param c     (color)  Session Color
+f_update_session(Sess session, bool on, bool wasOn, color c, int mins) =>
+    if on and not wasOn
+        session.start(c, mins)
+    if on
+        session.update()
+    if wasOn and not on
+        session.end()
+
+// @function    in-session check with timezone (DST-safe)
+// @param sess  (string) session data
+// @param tz    (string) session time zone
+inSess(string sess, string tz) =>
+    not na(time(timeframe.period, sess, tz))
+
+
+//-------------------------------------------------------------------------------------------------< CALCULATIONS >---//
+
+//----------------------------------------------------< Convert Inputs
+textSize = str.lower(str.tostring(i_Text_Size))
+
+// ---------- Session definitions (local exchange time)
+
+au_sydney = inSess(sess = "1000-1600", tz = "Australia/Sydney")
+as_tokyo = inSess(sess = "0900-1500", tz = "Asia/Tokyo")
+as_singapore = inSess(sess = "0900-1700", tz = "Asia/Singapore")
+in_kolkata = inSess(sess = "0915-1530", tz = "Asia/Kolkata")
+eu_berlin = inSess(sess = "0900-1730", tz = "Europe/Berlin")
+eu_london = inSess(sess = "0800-1630", tz = "Europe/London")
+us_newyork = inSess(sess = "0930-1600", tz = "America/New_York")
+
+// ---------- 
+isAU  = timeframe.isintraday and au_sydney
+isAS  = timeframe.isintraday and (as_tokyo or as_singapore)
+isIN  = timeframe.isintraday and in_kolkata
+isEU  = timeframe.isintraday and (eu_london or eu_berlin)
+isUS  = timeframe.isintraday and us_newyork
+
+event00 = inSess(sess = '1745-1759', tz = 'America/New_York') /// 5:45pm - 5:59pm
+event01 = inSess(sess = '1800-1805', tz = 'America/New_York') /// 6:00pm - 6:05pm
+event02 = inSess(sess = '1806-1859', tz = 'America/New_York') /// 6:06pm - 6:59pm
+event03 = inSess(sess = '1900-1905', tz = 'America/New_York') /// 7:00pm - 7:05pm
+event04 = inSess(sess = '1906-2244', tz = 'America/New_York') /// 7:06pm - 10:44pm
+event05 = inSess(sess = '2245-2250', tz = 'America/New_York') /// 10:45pm - 10:50pm
+event06 = inSess(sess = '2251-2354', tz = 'America/New_York') /// 10:51pm - 11:54pm
+event07 = inSess(sess = '2355-2359', tz = 'America/New_York') /// 11:55pm - 11:59pm
+event08 = inSess(sess = '2400-0254', tz = 'America/New_York') /// 12:00am - 02:54am
+event09 = inSess(sess = '0255-0259', tz = 'America/New_York') /// 2:55am - 2:59am
+event10 = inSess(sess = '0300-0305', tz = 'America/New_York') /// 3:00am - 3:05am
+event11 = inSess(sess = '0306-0444', tz = 'America/New_York') /// 3:06am - 4:44am
+event12 = inSess(sess = '0455-0459', tz = 'America/New_York') /// 4:55am - 4:59am
+event13 = inSess(sess = '0500-0929', tz = 'America/New_York') /// 5:00am - 9:29am
+event14 = inSess(sess = '0930-0935', tz = 'America/New_York') /// 9:30am - 9:35am
+event15 = inSess(sess = '0936-1554', tz = 'America/New_York') /// 9:36am - 3:54pm
+event16 = inSess(sess = '1555-1559', tz = 'America/New_York') /// 3:55pm - 3:59pm
+event17 = inSess(sess = '1600-1659', tz = 'America/New_York') /// 4:00pm - 4:59pm
+event18 = inSess(sess = '1700-1744', tz = 'America/New_York') /// 5:00pm - 5:44pm
+
+
+// ---------- Table String Logic
+tableText = if event00 and event00[1]
+    'Market Open Soon!!'
+else if event01 and event01[1]
+    'Sydeny Session Open'
+else if event02 and event02[1]
+    'Sydney Session'
+else if event03 and event03[1]
+    'Tokyo Session Open'
+else if event04 and event04[1]
+    'Sydney-Tokyo Session'
+else if event05 and event05[1]
+    'Kolkata Session Open'
+else if event06 and event06[1]
+    'Sydeny-Tokyo-Kolkata Session'
+else if event07 and event07[1]
+    'Sydeny Session Closing'
+else if event08 and event08[1]
+    'Tokyo-Kolkata Session'
+else if event09 and event09[1]
+    'Tokyo Session Closing'
+else if event10 and event10[1]
+    'London Session Open'
+else if event11 and event11[1]
+    'Kolkata-London Session'
+else if event12 and event12[1]
+    'Kolkata Session Closing'
+else if event13 and event13[1]
+    'London Session'
+else if event14 and event14[1]
+    'New York Session Open'
+else if event15 and event15[1]
+    'New York Session'
+else if event16 and event16[1]
+    'New York Session Closing'
+else if event17 and event17[1]
+    'After Market'
+else if event18 and event18[1]
+    'Market Closed'
+else
+    'Error'
+
+//-------------------------------------------------------------------------------------------------------< Plots >----//
+
+// ---------- Drive with durations
+f_update_session(AU, switchState(i_Use_AU) and isAU, switchState(i_Use_AU) and isAU[1], i_Clr_AU, MIN_AU)
+f_update_session(AS, switchState(i_Use_AS) and isAS, switchState(i_Use_AS) and isAS[1], i_Clr_AS, MIN_AS)
+f_update_session(IN, switchState(i_Use_IN) and isIN, switchState(i_Use_IN) and isIN[1], i_Clr_IN, MIN_IN)
+f_update_session(EU, switchState(i_Use_EU) and isEU, switchState(i_Use_EU) and isEU[1], i_Clr_EU, MIN_EU)
+f_update_session(US, switchState(i_Use_US) and isUS, switchState(i_Use_US) and isUS[1], i_Clr_US, MIN_US)
+
+
+//------------------------------------------------------------------------------------------------------< TABLEs >----//
+
+var table tableSessions = table.new(position = position.middle_center, columns = 5, rows = 3)
+
+//--- Cell Width
+const int CWR0 = 20
+const int CWR1 = 20
+const int CWR2 = 100
+
+//--- Cell Height
+const int CHR0 = 40
+const int CHR1 = 20
+const int CHR2 = 40
+
+// Table Style
+table.set_bgcolor(tableSessions, GRAY)
+table.set_frame_color(tableSessions, CLR_BLACK)
+table.set_border_color(tableSessions, CLR_BLACK)
+table.set_frame_width(tableSessions, 3)
+table.set_border_width(tableSessions, 5)
+
+if barstate.islast
+    //--- Row 0
+    table.cell(tableSessions, 0, 0, 
+      width = CWR0, height = CHR0,
+      text = 'Sydney', text_color = CLR_BLACK, text_size = textSize,
+      bgcolor = CLR_AU,
+      text_formatting = text.format_bold, text_valign = text.align_bottom,
+      tooltip = 'Sydeny Session --- 6:00pm - 12:00am')
+    
+    table.cell(tableSessions, 1, 0, 
+      width = CWR0, height = CHR0,
+      text = 'Tokyo', text_color = CLR_BLACK, text_size = textSize,
+      bgcolor = CLR_AS,
+      text_formatting = text.format_bold, text_valign = text.align_bottom,
+      tooltip = 'Tokyo Session --- 7:00pm - 3:00am')
+    
+    table.cell(tableSessions, 2, 0, 
+      width = CWR0, height = CHR0,
+      text = 'Kolkata', text_color = CLR_BLACK, text_size = textSize,
+      bgcolor = CLR_IN,
+      text_formatting = text.format_bold, text_valign = text.align_bottom,
+      tooltip = 'Kolkata Session --- 10:45pm - 5:00am')
+    
+    table.cell(tableSessions, 3, 0, 
+      width = CWR0, height = CHR0,
+      text = 'London', text_color = CLR_BLACK, text_size = textSize,
+      bgcolor = CLR_EU,
+      text_formatting = text.format_bold, text_valign = text.align_bottom,
+      tooltip = 'London Session --- 3:00am - 11:30am')
+    
+    table.cell(tableSessions, 4, 0, 
+      width = CWR0, height = CHR0,
+      text = 'New York', text_color = CLR_BLACK, text_size = textSize,
+      bgcolor = CLR_US,
+      text_formatting = text.format_bold, text_valign = text.align_bottom,
+      tooltip = 'New York Session --- 9:30am - 4:00pm')
+    
+    //--- Row 1
+    table.cell(tableSessions, 0, 1, 
+      width = CWR1, height = CHR1,
+      text = '', bgcolor = isAU ? CLR_O : CLR_C)
+    
+    table.cell(tableSessions, 1, 1, 
+      width = CWR1, height = CHR1,
+      text = '', bgcolor = isAS ? CLR_O : CLR_C)
+
+    table.cell(tableSessions, 2, 1, 
+      width = CWR1, height = CHR1,
+      text = '', bgcolor = isIN ? CLR_O : CLR_C)
+    
+    table.cell(tableSessions, 3, 1, 
+      width = CWR1, height = CHR1,
+      text = '', bgcolor = isEU ? CLR_O : CLR_C)
+    
+    table.cell(tableSessions, 4, 1, 
+      width = CWR1, height = CHR1,
+      text = '', bgcolor = isUS ? CLR_O : CLR_C)
+
+    //--- Row 2
+    table.merge_cells(tableSessions,0,2,4,2)
+    table.cell(tableSessions,0,2,
+      width = CWR2, height = CHR2,
+      text = tableText,
+      text_color = CLR_BLACK, text_size = textSize,
+      text_formatting = text.format_bold)
+
+
+//----------------------------------------------------< END-CODE >----------------------------------------------------//

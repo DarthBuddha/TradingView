@@ -1,0 +1,170 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+//@version=6
+indicator(
+  title = 'Volume Delta Panel',
+  shorttitle = 'VD Panel',
+  overlay = false,
+  max_boxes_count = 500,
+  max_lines_count = 500,
+  max_labels_count = 500)
+
+//-------------------------------------------------------------------------------------------------------< COLORS >---//
+
+//----------------------------------------------------< CVD Colors
+// @variable - Color - Buy volume
+const color CLR_B = color.rgb(0, 128, 0)
+// @variable - Color - Sell volume
+const color CLR_S = color.rgb(128, 0, 0)
+// @variable - Color - Total volume
+const color CLR_T = color.gray
+
+//----------------------------------------------------< Table Colors
+// @variable - Table frame color
+const color FRAME_COLOR = color.rgb(0, 0, 0)
+// @variable - Table text color
+const color TEXT_COLOR = color.rgb(0, 0, 0)
+// @variable - Table text color
+const color BG_COLOR = color.gray
+//-------------------------------------------------------------------------------------------------------< INPUTS >---//
+const string g_Colors = "Volume"
+// @variable - User input Buy volume color
+color i_CLR_B = input.color(defval = CLR_B, title = 'Buy', group = g_Colors, inline = '1')
+// @variable - User input Sell volume color
+color i_CLR_S = input.color(defval = CLR_S, title = 'Sell', group = g_Colors, inline = '1')
+// @variable - User input Neutral volume color
+color i_CLR_T = input.color(defval = CLR_T, title = 'Total', group = g_Colors, inline = '1')
+
+const string g_Table  = 'Table Style'
+string  i_Style_Size  = input.string(
+  defval = 'large', 
+  title = 'Text Size', 
+  options = ['tiny','small','normal','large','huge'],
+  group = g_Table, inline = '1')
+
+//----------------------------------------------------------------------------------------------------< FUNCTIONS >---//
+
+clamp(x, lo, hi) =>
+    math.max(lo, math.min(hi, x))
+
+const float EPS = 1e-10
+
+// Proportional(HL) split for any OHLCV tuple
+split_delta(h, l, c, v) =>
+    // clamp c into [l, h] and guard zero range
+    float r = math.max(h - l, EPS)
+    float cc = math.max(l, math.min(h, c))
+    float w = (cc - l) / r 
+    float buy  = v * w
+    float sell = v - buy 
+    float delta = v * (2.0 * w - 1.0) 
+    float vol = v
+    [buy, sell, delta, vol]
+
+//-------------------------------------------------------------------------------------------------< CALCULATIONS >---//
+
+[tf_01_H, tf_01_L, tf_01_C, tf_01_V] = request.security(syminfo.tickerid, '1', [high, low, close, volume])
+[tf_03_H, tf_03_L, tf_03_C, tf_03_V] = request.security(syminfo.tickerid, '3', [high, low, close, volume])
+[tf_05_H, tf_05_L, tf_05_C, tf_05_V] = request.security(syminfo.tickerid, '5', [high, low, close, volume])
+[tf_15_H, tf_15_L, tf_15_C, tf_15_V] = request.security(syminfo.tickerid, '15', [high, low, close, volume])
+[tf_30_H, tf_30_L, tf_30_C, tf_30_V] = request.security(syminfo.tickerid, '30', [high, low, close, volume])
+[tf_45_H, tf_45_L, tf_45_C, tf_45_V] = request.security(syminfo.tickerid, '45', [high, low, close, volume])
+[tf_1H_H, tf_1H_L, tf_1H_C, tf_1H_V] = request.security(syminfo.tickerid, '60', [high, low, close, volume])
+[tf_4H_H, tf_4H_L, tf_4H_C, tf_4H_V] = request.security(syminfo.tickerid, '240', [high, low, close, volume])
+[tf_1D_H, tf_1D_L, tf_1D_C, tf_1D_V] = request.security(syminfo.tickerid, '1D', [high, low, close, volume], 
+  lookahead = barmerge.lookahead_on)
+
+[tf_01_buy, tf_01_sell, tf_01_Delta, tf_01_Vol] = split_delta(tf_01_H, tf_01_L, tf_01_C, tf_01_V)
+[tf_03_buy, tf_03_sell, tf_03_Delta, tf_03_Vol] = split_delta(tf_03_H, tf_03_L, tf_03_C, tf_03_V)
+[tf_05_buy, tf_05_sell, tf_05_Delta, tf_05_Vol] = split_delta(tf_05_H, tf_05_L, tf_05_C, tf_05_V)
+[tf_15_buy, tf_15_sell, tf_15_Delta, tf_15_Vol] = split_delta(tf_15_H, tf_15_L, tf_15_C, tf_15_V)
+[tf_30_buy, tf_30_sell, tf_30_Delta, tf_30_Vol] = split_delta(tf_30_H, tf_30_L, tf_30_C, tf_30_V)
+[tf_45_buy, tf_45_sell, tf_45_Delta, tf_45_Vol] = split_delta(tf_45_H, tf_45_L, tf_45_C, tf_45_V)
+[tf_1H_buy, tf_1H_sell, tf_1H_Delta, tf_1H_Vol] = split_delta(tf_1H_H, tf_1H_L, tf_1H_C, tf_1H_V)
+[tf_4H_buy, tf_4H_sell, tf_4H_Delta, tf_4H_Vol] = split_delta(tf_4H_H, tf_4H_L, tf_4H_C, tf_4H_V)
+[tf_1D_buy, tf_1D_sell, tf_1D_Delta, tf_1D_Vol] = split_delta(tf_1D_H, tf_1D_L, tf_1D_C, tf_1D_V)
+
+color detla_01_color = tf_01_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_03_color = tf_03_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_05_color = tf_05_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_15_color = tf_15_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_30_color = tf_30_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_45_color = tf_45_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_1H_color = tf_1H_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_4H_color = tf_4H_Delta >= 0 ? i_CLR_B : i_CLR_S
+color detla_1D_color = tf_1D_Delta >= 0 ? i_CLR_B : i_CLR_S
+
+float vmax = math.max(tf_1D_Vol, 1e-10)
+
+color cvdCellColor = if tf_1D_Delta >= 0 
+    color.from_gradient(
+  value = tf_1D_Delta ,bottom_value = 0 ,top_value = tf_1D_Vol, 
+  bottom_color = color.white ,top_color = CLR_B)
+else
+    color.from_gradient(
+  value = tf_1D_Delta ,bottom_value = tf_1D_Vol ,top_value = 0, 
+  bottom_color = CLR_S ,top_color = color.gray)
+
+//-------------------------------------------------------------------------------------------------------< TABLES >---//
+
+var table t_DailyCVD = table.new(position = position.top_center, columns = 9, rows = 3)
+
+const int TW0 = 10, const int TH0 = 38
+const int TW1 = 15, const int TH1 = 28
+const int TW2 = 15, const int TH2 = 28
+
+table.set_frame_color(t_DailyCVD, FRAME_COLOR)
+table.set_border_color(t_DailyCVD, FRAME_COLOR)
+table.set_frame_width(t_DailyCVD, 1)
+table.set_border_width(t_DailyCVD, 5)
+
+if barstate.islast
+    table.cell(table_id = t_DailyCVD, column = 0, row = 0, width = TW0, height = TH0, text = '1', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_01_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 1, row = 0, width = TW0, height = TH0, text = '3', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_03_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 2, row = 0, width = TW0, height = TH0, text = '5', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_05_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 3, row = 0, width = TW0, height = TH0, text = '15', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_15_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 4, row = 0, width = TW0, height = TH0, text = '30', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_30_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 5, row = 0, width = TW0, height = TH0, text = '45', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_45_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 6, row = 0, width = TW0, height = TH0, text = '1H', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_1H_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 7, row = 0, width = TW0, height = TH0, text = '4H', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_4H_color, text_formatting = text.format_bold)
+    table.cell(table_id = t_DailyCVD, column = 8, row = 0, width = TW0, height = TH0, text = '1D', 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, bgcolor = detla_1D_color, text_formatting = text.format_bold)
+
+    table.merge_cells(table_id = t_DailyCVD, start_column = 0, start_row = 1, end_column = 2, end_row = 2)
+    table.cell(table_id = t_DailyCVD, column = 0, row = 1, width = TW1, height = TH1 + TH2,
+      text = str.tostring(tf_1D_buy, format.volume), 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, 
+      bgcolor = CLR_B, 
+      text_formatting = text.format_bold)
+
+    table.merge_cells(table_id = t_DailyCVD, start_column = 3, start_row = 1, end_column = 5, end_row = 1)
+    table.cell(table_id = t_DailyCVD, column = 3, row = 1, width = TW1, height = TH1,
+      text = str.tostring(tf_1D_Vol, format.volume), 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, 
+      bgcolor = BG_COLOR, 
+      text_formatting = text.format_bold)
+
+    table.merge_cells(table_id = t_DailyCVD, start_column = 3, start_row = 2, end_column = 5, end_row = 2)
+    table.cell(table_id = t_DailyCVD, column = 3, row = 2, width = TW1, height = TH1,
+      text = str.tostring(tf_1D_Delta, format.volume), 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, 
+      bgcolor = cvdCellColor, 
+      text_formatting = text.format_bold)
+
+    table.merge_cells(table_id = t_DailyCVD, start_column = 6, start_row = 1, end_column = 8, end_row = 2)
+    table.cell(table_id = t_DailyCVD, column = 6, row = 1, width = TW1, height = TH1 + TH2,
+      text = str.tostring(tf_1D_sell, format.volume), 
+      text_color = TEXT_COLOR, text_size = i_Style_Size, 
+      bgcolor = CLR_S, 
+      text_formatting = text.format_bold)
+
+//----------------------------------------------------< END-CODE >----------------------------------------------------//

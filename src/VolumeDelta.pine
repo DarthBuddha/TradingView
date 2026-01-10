@@ -1,0 +1,134 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+//@version=6
+indicator(
+  title = 'Volume Delta',
+  shorttitle = 'Vol Delta',
+  overlay = false,
+  max_boxes_count = 500,
+  max_lines_count = 500,
+  max_labels_count = 500)
+
+//----------------------------------------------------------------------------------------------------< CONSTANTs >---//
+
+//----------------------------------------------------< COLORs
+// @variable - Color - Buy volume
+const color CLR_B = color.rgb(0, 128, 0)
+// @variable - Color - Sell volume
+const color CLR_S = color.rgb(128, 0, 0)
+// @variable - Color - Total volume
+const color CLR_T = color.rgb(120, 120, 120)
+// @variable - Table frame color
+const color CLR_FRAME = color.rgb(0, 0, 0)
+// @variable - Table text color
+const color CLR_TEXT = color.rgb(0, 0, 0)
+
+//----------------------------------------------------< STRINGs
+const string g_Colors = "Volume"
+const string g_Table  = 'Table Style'
+
+//----------------------------------------------------< FLOATs
+const float EPS = 1e-10
+
+//----------------------------------------------------< ENUMs
+enum State
+    On = 'ON'
+    Off = 'OFF'
+
+enum Tx
+    Tiny = 'Tiny'
+    Small = 'Small'
+    Normal = 'Normal'
+    Large = 'Large'
+    Huge = 'Huge'
+
+
+//-------------------------------------------------------------------------------------------------------< INPUTs >---//
+
+// @variable - User input Buy volume color
+i_CLR_B = input.color(CLR_B, 'Buy', group = g_Colors, inline = '1')
+// @variable - User input Sell volume color
+i_CLR_S = input.color(CLR_S, 'Sell', group = g_Colors, inline = '1')
+// @variable - User input Neutral volume color
+i_CLR_T = input.color(CLR_T, 'Total', group = g_Colors, inline = '1')
+
+
+i_TbState = input.enum(State.On,'')
+
+i_TxSize = input.enum(Tx.Normal, '')
+
+
+//----------------------------------------------------------------------------------------------------< FUNCTIONs >---//
+
+// @function  - State Switch
+// @returns   - true or false
+switchState(simple State state) =>
+    switch state
+        State.On => true
+        State.Off => false
+
+clamp(x, lo, hi) =>
+    math.max(lo, math.min(hi, x))
+
+
+// Proportional(HL) split for any OHLCV tuple
+split_delta(h, l, c, v) =>
+    // clamp c into [l, h] and guard zero range
+    r = math.max(h - l, EPS)
+    cc = math.max(l, math.min(h, c))
+    w = (cc - l) / r 
+    buy  = v * w
+    sell = v - buy 
+    delta = v * (2.0 * w - 1.0) 
+    vol = v
+    [buy, sell, delta, vol]
+
+//-------------------------------------------------------------------------------------------------< CALCULATIONs >---//
+
+
+[chart_H, chart_L, chart_C, chart_V] = request.security(syminfo.tickerid, timeframe.period, [high, low, close, volume])
+
+[buyVol, sellVol, deltaValue, totalVol] = split_delta(chart_H, chart_L, chart_C, chart_V)
+
+// Colors for delta bars
+deltaColor = deltaValue > 0 ? i_CLR_B : deltaValue < 0 ? i_CLR_S : i_CLR_T
+
+// Output Delta Value
+plotDeltaValue = deltaValue >= 0 ? deltaValue : -deltaValue
+
+vmax = math.max(totalVol, 1e-10)
+
+cvdBg = deltaValue >= 0 
+      ? color.from_gradient(deltaValue, 0.0,  vmax, CLR_T, color.lime) 
+      : color.from_gradient(deltaValue, -vmax, 0.0, color.red, CLR_T)
+
+//--------------------------------------------------------------------------------------------------------< PLOTs >---//
+
+// @variable - Total volume
+plot_TotalVolume = plot(totalVol, 'Total Volume', cvdBg, style = plot.style_columns, display = display.pane)
+
+// Delta histogram (zero-centered)
+plot_VolumeDelta = plot(plotDeltaValue, 'Volume Delta', deltaColor, style = plot.style_columns, display = display.pane)
+
+//-------------------------------------------------------------------------------------------------------< TABLEs >---//
+
+var t_CVD = table.new(position = position.middle_right, columns = 1, rows = 3, force_overlay = false)
+
+TW2 = 0
+TH2 = 30
+
+table.set_frame_color(t_CVD, CLR_FRAME)
+table.set_border_color(t_CVD, CLR_FRAME)
+table.set_frame_width(t_CVD, 3)
+table.set_border_width(t_CVD, 5)
+
+if barstate.islast and switchState(i_TbState)
+    table.cell(t_CVD, 0, 0, str.tostring(buyVol, format.volume), TW2, TH2, CLR_TEXT, 
+      text_size = str.lower(str.tostring(i_TxSize)), bgcolor = CLR_B, text_formatting = text.format_bold)
+    table.cell(t_CVD, 0, 1, str.tostring(deltaValue, format.volume), TW2, TH2, CLR_TEXT, 
+      text_size = str.lower(str.tostring(i_TxSize)), bgcolor = cvdBg, text_formatting = text.format_bold)
+    table.cell(t_CVD, 0, 2, str.tostring(sellVol, format.volume), TW2, TH2, CLR_TEXT, 
+      text_size = str.lower(str.tostring(i_TxSize)), bgcolor = CLR_S, text_formatting = text.format_bold)
+
+//----------------------------------------------------< END-CODE >----------------------------------------------------//

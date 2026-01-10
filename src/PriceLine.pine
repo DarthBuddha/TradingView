@@ -1,0 +1,76 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+// @version=6
+indicator(
+  title = 'Buddha Price Line', 
+  shorttitle = 'Price', 
+  overlay = true)
+
+//----------------------------------------------------------------------------------------------------< CONSTANTS >---//
+
+// @variable - Bullish Color
+const color BULLISH_COLOR = color.rgb(0, 255, 30)
+// @variable - Neutral Color
+const color NEUTRAL_COLOR = color.rgb(255, 255, 255)
+// @variable - Bearish Color
+const color BEARISH_COLOR = color.rgb(255, 0, 0)
+
+//-------------------------------------------------------------------------------------------------------< INPUTS >---//
+
+// Group Labels
+const string g_Price = "Price Line"
+// @variable - Bullish line color
+color i_BullishColor = input.color(title = "Bullish", defval = BULLISH_COLOR, 
+  group = g_Price, inline = "1", display = display.none)
+// @variable - Neutral line color
+color i_NeutralColor = input.color(title = "Neutral", defval = NEUTRAL_COLOR, 
+  group = g_Price, inline = "1", display = display.none)
+// @variable - Bearish line color
+color i_BearishColor = input.color(title = "Bearish", defval = BEARISH_COLOR, 
+  group = g_Price, inline = "1", display = display.none)
+// @variable - Line Size
+int i_Width = input.int(title = "Line Size", defval = 2, options = [1, 2, 3, 4, 5], 
+  group = g_Price, inline = "2", display = display.none)
+// @variable - Line On/Off
+bool i_PriceLine = input.bool(title = "On/Off", defval = true, 
+  group = g_Price, inline = "2", display = display.none)
+
+//-------------------------------------------------------------------------------------------------< CALCULATIONS >---//
+
+// @variable - Line data
+series float v_Data = i_PriceLine ? close : na
+
+// @variable - Price line color
+var color v_LineColor = na
+if barstate.islast
+    v_LineColor := 
+      v_Data > v_Data[1] ? i_BullishColor :
+      v_Data < v_Data[1] ? i_BearishColor :
+      i_NeutralColor
+
+// Line Points
+chart.point cp1_Data = chart.point.from_index(last_bar_index + 1, price = v_Data)
+chart.point cp2_Data = chart.point.from_index(last_bar_index + 10, price = v_Data)
+
+//------------------------------------------------------------------------------------------------------< VISUALS >---//
+
+// @variable - Plot hidden baseline
+var plot_PriceLine = plot(
+  series = v_Data, 
+  title = "Price", 
+  color = v_LineColor, 
+  editable = false, 
+  display = display.price_scale)
+
+// @variable - Arrow line
+var line line_Arrow = na
+if barstate.islast
+    if not na(line_Arrow)
+        line.delete(line_Arrow)
+    line_Arrow := line.new(
+      first_point = cp1_Data, second_point = cp2_Data,
+      xloc = xloc.bar_index, extend = extend.right,
+      color = v_LineColor, style = line.style_arrow_left, width = i_Width, force_overlay = true)
+
+//----------------------------------------------------< END-CODE >----------------------------------------------------//
