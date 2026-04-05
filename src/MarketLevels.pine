@@ -205,10 +205,16 @@ reqSec(string tf) =>
 // @function Gets a standardized set of values from a one minute timeframe.
 // @returns  [open, high, low, close, time, session.ismarket]
 GetOneMinBarVals() =>
-    request.security_lower_tf(
-          symbol = ticker.modify(syminfo.tickerid, session.extended), 
-          timeframe = '1', 
-          expression = [open, high, low, close, time, session.ismarket])
+    // security_lower_tf requires a timeframe strictly lower than the chart.
+    // On sub-minute charts (e.g. 15s) the chart IS finer than 1m, so wrap
+    // the current bar's values in single-element arrays instead.
+    if timeframe.isseconds
+        [array.from(open), array.from(high), array.from(low), array.from(close), array.from(time), array.from(session.ismarket)]
+    else
+        request.security_lower_tf(
+              symbol = ticker.modify(syminfo.tickerid, session.extended), 
+              timeframe = '1', 
+              expression = [open, high, low, close, time, session.ismarket])
 
 // @type Object to store bar values.
 type barVals
@@ -237,7 +243,11 @@ BI1 = field_0[1]
 varip bts = array.new_int(2, 0)
 bts.push(bar.Times.size())
 bts.shift()
-newOneMinueBar = bar.isrealtime 
+// On sub-minute charts every new bar is finer than 1m, so treat each new bar
+// as a "new one-minute bar" trigger so session/segment logic fires correctly.
+newOneMinueBar = timeframe.isseconds 
+          ? barstate.isnew 
+          : bar.isrealtime 
           ? timeframe.multiplier == 1 and timeframe.isminutes 
           ? barstate.isnew : bts.range() > 0 and bar.Times.size() > 0 : true
 
