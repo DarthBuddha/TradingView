@@ -1,0 +1,186 @@
+// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+//@version=6
+indicator(
+  title = 'Buddha Money Flow',
+  shorttitle = 'Money Flow',
+  overlay = false,
+  max_boxes_count = 500,
+  max_lines_count = 500,
+  max_labels_count = 500)
+
+//----------------------------------------------------------------------------------------------------< CONSTANTs >---//
+
+//----------------------------------------------------< COLORs
+// @variable - Color - Buy volume
+const color CLR_B = color.rgb(0, 128, 0)
+// @variable - Color - Sell volume
+const color CLR_S = color.rgb(128, 0, 0)
+// @variable - Color - Total volume
+const color CLR_T = color.rgb(120, 120, 120)
+// @variable - Table frame color
+const color CLR_FRAME = color.rgb(0, 0, 0)
+// @variable - Table text color
+const color CLR_TEXT = color.rgb(0, 0, 0)
+
+//----------------------------------------------------< STRINGs
+const string g_Colors = "Volume"
+const string g_Table  = 'Table Style'
+const string g_Footprint = 'Footprint'
+const string g_Display = 'Display'
+
+//----------------------------------------------------< ENUMs
+enum State
+    On = 'ON'
+    Off = 'OFF'
+
+enum Tx
+    Tiny = 'Tiny'
+    Small = 'Small'
+    Normal = 'Normal'
+    Large = 'Large'
+    Huge = 'Huge'
+
+enum CvdMode
+    Off = 'Off'
+    Running = 'Running'
+    Windowed = 'Windowed'
+
+
+//-------------------------------------------------------------------------------------------------------< INPUTs >---//
+
+// @variable - User input Buy volume color
+i_CLR_B = input.color(CLR_B, 'Buy', group = g_Colors, inline = '1')
+// @variable - User input Sell volume color
+i_CLR_S = input.color(CLR_S, 'Sell', group = g_Colors, inline = '1')
+// @variable - User input Neutral volume color
+i_CLR_T = input.color(CLR_T, 'Total', group = g_Colors, inline = '1')
+
+
+i_TbState = input.enum(State.On,'')
+
+i_TxSize = input.enum(Tx.Normal, '')
+
+i_TicksPerRow = input.int(25, 'Ticks Per Row', minval = 1, group = g_Footprint)
+i_ValueAreaPct = input.float(70.0, 'Value Area %', minval = 1.0, maxval = 100.0, step = 1.0, group = g_Footprint)
+i_ImbalancePct = input.float(300.0, 'Imbalance %', minval = 1.0, step = 25.0, group = g_Footprint)
+
+i_ShowTotalVolume = input.bool(true, 'Show Total Volume', group = g_Display)
+i_ShowTable = input.bool(true, 'Show Table', group = g_Display)
+i_PositiveColumnsOnly = input.bool(true, 'Columns Above Zero', group = g_Display)
+i_CvdMode = input.enum(CvdMode.Windowed, 'CVD Mode', group = g_Display)
+i_CvdLength = input.int(50, 'CVD Window', minval = 1, group = g_Display)
+
+
+//----------------------------------------------------------------------------------------------------< FUNCTIONs >---//
+
+// @function  - State Switch
+// @returns   - true or false
+switchState(simple State state) =>
+    switch state
+        State.On => true
+        State.Off => false
+
+clamp(x, lo, hi) =>
+    math.max(lo, math.min(hi, x))
+
+fmtPct(value) =>
+  na(value) ? 'n/a' : str.tostring(value, '#.##') + '%'
+
+//-------------------------------------------------------------------------------------------------< CALCULATIONs >---//
+
+footprint chartFootprint = request.footprint(i_TicksPerRow, i_ValueAreaPct, i_ImbalancePct)
+bool hasFootprint = not na(chartFootprint)
+
+buyVol = hasFootprint ? footprint.buy_volume(chartFootprint) : na
+sellVol = hasFootprint ? footprint.sell_volume(chartFootprint) : na
+deltaValue = hasFootprint ? footprint.delta(chartFootprint) : na
+totalVol = hasFootprint ? footprint.total_volume(chartFootprint) : na
+
+volume_row pocRow = hasFootprint ? footprint.poc(chartFootprint) : na
+volume_row vahRow = hasFootprint ? footprint.vah(chartFootprint) : na
+volume_row valRow = hasFootprint ? footprint.val(chartFootprint) : na
+
+pocPrice = not na(pocRow) ? (volume_row.up_price(pocRow) + volume_row.down_price(pocRow)) * 0.5 : na
+vahPrice = not na(vahRow) ? volume_row.up_price(vahRow) : na
+valPrice = not na(valRow) ? volume_row.down_price(valRow) : na
+
+buyImbalanceRows = 0
+sellImbalanceRows = 0
+float maxPositiveRowDelta = na
+float maxNegativeRowDelta = na
+
+if hasFootprint
+    for row in footprint.rows(chartFootprint)
+        float rowDelta = volume_row.delta(row)
+        buyImbalanceRows += volume_row.has_buy_imbalance(row) ? 1 : 0
+        sellImbalanceRows += volume_row.has_sell_imbalance(row) ? 1 : 0
+        maxPositiveRowDelta := na(maxPositiveRowDelta) ? rowDelta : math.max(maxPositiveRowDelta, rowDelta)
+        maxNegativeRowDelta := na(maxNegativeRowDelta) ? rowDelta : math.min(maxNegativeRowDelta, rowDelta)
+
+deltaAbs = math.abs(nz(deltaValue, 0.0))
+deltaPct = totalVol > 0 ? (deltaValue / totalVol) * 100.0 : na
+buyPct = totalVol > 0 ? (buyVol / totalVol) * 100.0 : na
+sellPct = totalVol > 0 ? (sellVol / totalVol) * 100.0 : na
+cvdRunning = ta.cum(nz(deltaValue, 0.0))
+cvdWindowed = math.sum(nz(deltaValue, 0.0), i_CvdLength)
+cvd = switch i_CvdMode
+    CvdMode.Running => cvdRunning
+    CvdMode.Windowed => cvdWindowed
+    => na
+
+// Colors for delta bars
+deltaColor = deltaValue > 0 ? i_CLR_B : deltaValue < 0 ? i_CLR_S : i_CLR_T
+
+// Output Delta Value
+plotDeltaValue = i_PositiveColumnsOnly ? deltaAbs : deltaValue
+
+vmax = math.max(nz(totalVol, 0.0), 1e-10)
+
+cvdBg = deltaValue >= 0 
+      ? color.from_gradient(deltaValue, 0.0,  vmax, CLR_T, color.lime) 
+      : color.from_gradient(deltaValue, -vmax, 0.0, color.red, CLR_T)
+
+//--------------------------------------------------------------------------------------------------------< PLOTs >---//
+
+// @variable - Total volume
+plot_TotalVolume = plot(i_ShowTotalVolume ? totalVol : na, 'Total Volume', cvdBg, style = plot.style_columns, display = display.pane)
+
+// Delta histogram (zero-centered)
+plot_VolumeDelta = plot(plotDeltaValue, 'Volume Delta', deltaColor, style = plot.style_columns, display = display.pane)
+
+hline(0, 'Zero', color.new(CLR_T, 65), hline.style_dotted)
+
+//-------------------------------------------------------------------------------------------------------< TABLEs >---//
+
+var t_CVD = table.new(position = position.middle_right, columns = 2, rows = 7, force_overlay = false)
+
+TW2 = 0
+TH2 = 30
+
+table.set_frame_color(t_CVD, CLR_FRAME)
+table.set_border_color(t_CVD, CLR_FRAME)
+table.set_frame_width(t_CVD, 3)
+table.set_border_width(t_CVD, 5)
+
+if barstate.islast and switchState(i_TbState) and i_ShowTable
+    textSize = str.lower(str.tostring(i_TxSize))
+
+    
+    table.cell(t_CVD, 0, 0, 'Buy', TW2, TH2, CLR_TEXT,
+      text_size = textSize, bgcolor = CLR_B, text_formatting = text.format_bold)
+    table.cell(t_CVD, 1, 0, str.tostring(buyVol, format.volume) + ' (' + fmtPct(buyPct) + ')', TW2, TH2, CLR_TEXT,
+      text_size = textSize, bgcolor = CLR_B, text_formatting = text.format_bold)
+
+    table.cell(t_CVD, 0, 1, 'Delta', TW2, TH2, CLR_TEXT,
+      text_size = textSize, bgcolor = deltaColor, text_formatting = text.format_bold)
+    table.cell(t_CVD, 1, 1, str.tostring(deltaValue, format.volume) + ' (' + fmtPct(deltaPct) + ')', TW2, TH2, CLR_TEXT,
+      text_size = textSize, bgcolor = cvdBg, text_formatting = text.format_bold)
+
+    table.cell(t_CVD, 0, 2, 'Sell', TW2, TH2, CLR_TEXT,
+      text_size = textSize, bgcolor = CLR_S, text_formatting = text.format_bold)
+    table.cell(t_CVD, 1, 2, str.tostring(sellVol, format.volume) + ' (' + fmtPct(sellPct) + ')', TW2, TH2, CLR_TEXT,
+      text_size = textSize, bgcolor = CLR_S, text_formatting = text.format_bold)
+
+//----------------------------------------------------< END-CODE >----------------------------------------------------//

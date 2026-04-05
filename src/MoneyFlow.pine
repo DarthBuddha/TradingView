@@ -3,8 +3,8 @@
 
 //@version=6
 indicator(
-  title = 'Volume Delta',
-  shorttitle = 'Vol Delta',
+  title = 'Money Flow',
+  shorttitle = 'Money Flow',
   overlay = false,
   max_boxes_count = 500,
   max_lines_count = 500,
