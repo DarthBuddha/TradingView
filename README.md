@@ -7,7 +7,7 @@ Custom Pine Script indicators focused on structure, sessions, and volume/flow co
 - Buddha Bands: Four SMA bands using 20-21, 50-55, 200-233, and 365-377 ranges.
 - Buddha Money Flow: Footprint-based buy/sell/delta flow panel and histogram.
 - Buddha Squeeze: TTM Squeeze style momentum/volatility oscillator.
-- Market Levels: Auto-draws key market levels.
+- Buddha Market Levels: Auto-draws key market levels.
 - Market Sessions: Session tracker for trading day structure.
 - Price Line: Current price display helper.
 - Money Flow: Buy vs sell volume histogram.
@@ -45,7 +45,7 @@ Notes:
 - `src/BuddhaBands.pine`
 - `src/BuddhaMoneyFlow.pine`
 - `src/BuddhaSqueeze.pine`
-- `src/MarketLevels.pine`
+- `src/BuddhaMarketLevels.pine`
 - `src/MarketSessions.pine`
 - `src/PriceLine.pine`
 - `src/MoneyFlow.pine`

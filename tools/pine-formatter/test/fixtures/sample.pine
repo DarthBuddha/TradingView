@@ -1,0 +1,65 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0
+// https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+//@version=6
+indicator(
+      title     = 'Buddha Market Levels',
+      shorttitle = 'Mkt Lvl',
+      overlay    = true,
+      max_lines_count  = 500,
+      max_labels_count = 500,
+      dynamic_requests = true)
+
+//----< ENUMs >----//
+
+enum State
+    on  = 'ON'
+    off = 'OFF'
+
+enum OpAnchor
+    Session = 'Session Open'
+    NyOpen  = 'NY Open (09:30 ET)'
+    Both    = 'Both (Session + NY)'
+
+//----< INPUTs >----//
+
+i_OpAnchor = input.enum(OpAnchor.Session, 'Opening Range Anchor', group = 'Opening Range')
+i_OrMins   = input.int(30, 'OR Duration (minutes)', minval = 1, maxval = 120, group = 'Opening Range')
+
+//----< HELPERS >----//
+
+addMinutesToTime(timeStr, mins) =>
+    h = int(timeStr) / 100
+    m = int(timeStr) % 100 + mins
+    str.format('{0,number,0000}', h * 100 + m)
+
+//----< LOGIC >----//
+
+bool newOneMinuteBar = timeframe.isseconds
+      ? barstate.isnew
+      : timeframe.change('1')
+
+bool someCondition = close > open and volume > ta.sma(volume, 20)
+
+// Long ternary that should stay within 120 chars — formatter must not break correct code
+float level = syminfo.type == 'futures' and i_OpAnchor == OpAnchor.Session ? high : i_OpAnchor == OpAnchor.NyOpen ? low : close
+
+// Function call spanning multiple arguments — wrap candidate at commas
+label.new(
+      x      = bar_index,
+      y      = high,
+      text   = str.format('HoD: {0}', str.tostring(high, '#.##')),
+      color  = color.new(color.orange, 60),
+      style  = label.style_label_down,
+      textcolor = color.white)
+
+// Multi-condition if
+if newOneMinuteBar and someCondition and volume > 0
+    level := high
+
+// Nested blocks
+for i = 0 to array.size(levels) - 1
+    lvl = array.get(levels, i)
+    if lvl > close
+        array.set(levels, i, close)

@@ -1,0 +1,62 @@
+{
+    "name": "pine-formatter-vscode",
+    "displayName": "Pine Script Formatter",
+    "description": "Auto-formatter for Pine Script v6: 120-char lines, correct block/continuation indentation (TradingView safe).",
+    "version": "0.1.0",
+    "publisher": "DarthBuddha",
+    "license": "MPL-2.0",
+    "engines": { "vscode": "^1.85.0" },
+    "categories": ["Formatters"],
+    "activationEvents": ["onLanguage:pine"],
+    "main": "./out/vscode/src/extension.js",
+    "contributes": {
+        "languages": [
+            {
+                "id": "pine",
+                "aliases": ["Pine Script", "pine"],
+                "extensions": [".pine"]
+            }
+        ],
+        "configurationDefaults": {
+            "[pine]": {
+                "editor.defaultFormatter": "DarthBuddha.pine-formatter-vscode",
+                "editor.formatOnSave": true,
+                "editor.rulers": [120]
+            }
+        },
+        "configuration": {
+            "title": "Pine Formatter",
+            "properties": {
+                "pineFormatter.printWidth": {
+                    "type": "number",
+                    "default": 120,
+                    "description": "Maximum line length. Lines exceeding this are wrapped."
+                },
+                "pineFormatter.indentSize": {
+                    "type": "number",
+                    "default": 4,
+                    "description": "Block indentation in spaces. Pine Script requires 4."
+                },
+                "pineFormatter.continuationIndent": {
+                    "type": "number",
+                    "default": 2,
+                    "description": "Extra spaces added to block indent for non-parenthesized line continuations. Must yield a non-multiple-of-4 total (Pine v6 rule)."
+                },
+                "pineFormatter.normalizeIndent": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Round block-level indentation to nearest multiple of indentSize (4)."
+                }
+            }
+        }
+    },
+    "scripts": {
+        "build": "tsc -p tsconfig.json",
+        "dev":   "tsc -p tsconfig.json --watch"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.85.0",
+        "@types/node":   "^20.0.0",
+        "typescript":    "^5.4.0"
+    }
+}
