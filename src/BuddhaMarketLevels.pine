@@ -141,7 +141,7 @@ i_LondonOpenColor = input.color(defval = COLOR_LONDON, title = '',
     group = g_OpenLondon, inline = '1', display = display.none)
 i_LondonOpenStart = input.string(defval = '0300', title = 'Start',
     group = g_OpenLondon, inline = '1', display = display.none)
-i_LondonOpennRange = input.int(defval = 15, title = 'Range',
+i_LondonOpenRange = input.int(defval = 15, title = 'Range',
     group = g_OpenLondon, inline = '1', display = display.none,
     minval = 5, maxval = 60, step = 5)
 
@@ -594,7 +594,7 @@ if Strings_Not_Initialized
     asiaOpeningStartTime := i_AsiaOpenStart
     sessionOpenEndTime := addMinutesToTime(sessionOpeningStartTime, i_GlobexOpenRange)
     nyOpenEndTime := addMinutesToTime(nyOpeningStartTime, i_NewYorkOpenRange)
-    londonOpenEndTime := addMinutesToTime(londonOpeningStartTime, i_LondonOpennRange)
+    londonOpenEndTime := addMinutesToTime(londonOpeningStartTime, i_LondonOpenRange)
     asiaOpenEndTime := addMinutesToTime(asiaOpeningStartTime, i_AsiaOpenRange)
     sessionOpeningMins := sessionOpeningStartTime + '-' + sessionOpenEndTime
     nyOpeningMins := nyOpeningStartTime + '-' + nyOpenEndTime
