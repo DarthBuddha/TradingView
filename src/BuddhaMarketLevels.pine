@@ -103,7 +103,7 @@ const string g_Open = 'Opening Range Settings'
 i_OrRangeTransparency = input.int(defval = 95, title = 'Range Transparency',
     group = g_Open, display = display.none, minval = 0, maxval = 100, step = 5)
 
-const string g_Globex = 'Globex - Opening Range'
+const string g_Globex = 'Globex - Opening Range "Futures Only"'
 i_OnOff_GlobexOpen = input.enum(defval = State.on, title = '',
     group = g_Globex, inline = '1', display = display.none)
 i_GlobexOpenColorLine = input.color(defval = COLOR_GLOBEX, title = '',
@@ -114,7 +114,7 @@ i_GlobexOpenRange = input.int(defval = 15, title = 'Range',
     group = g_Globex, inline = '1', display = display.none,
     minval = 5, maxval = 60, step = 5)
 
-const string g_OpenAsia = 'Asia - Opening Range'
+const string g_OpenAsia = 'Asia - Opening Range "Futures Only"'
 i_OnOff_AsiaOpen = input.enum(defval = State.on, title = '',
     group = g_OpenAsia, inline = '1', display = display.none)
 i_AsiaOpenColor = input.color(defval = COLOR_ASIA, title = '',
@@ -125,7 +125,7 @@ i_AsiaOpenRange = input.int(defval = 15, title = 'Range',
     group = g_OpenAsia, inline = '1', display = display.none,
     minval = 5, maxval = 60, step = 5)
 
-const string g_OpenLondon = 'London - Opening Range'
+const string g_OpenLondon = 'London - Opening Range "Futures Only"'
 i_OnOff_LondonOpen = input.enum(defval = State.on, title = '',
     group = g_OpenLondon, inline = '1', display = display.none)
 i_LondonOpenColor = input.color(defval = COLOR_LONDON, title = '',
@@ -147,7 +147,7 @@ i_NewYorkOpenRange = input.int(defval = 15, title = 'Range',
     group = g_OpenNewYork, inline = '1', display = display.none,
     minval = 5, maxval = 60, step = 5)
 
-const string g_Ov = 'Over Night'
+const string g_Ov = 'Over Night "Equity Only"'
 i_OvOnOff = input.enum(defval = State.on, title = '',
     group = g_Ov, inline = '1', display = display.none)
 i_OvHiClr = input.color(defval = CLR_OV_HI, title = 'High',
@@ -155,7 +155,7 @@ i_OvHiClr = input.color(defval = CLR_OV_HI, title = 'High',
 i_OvLoClr = input.color(defval = CLR_OV_LO, title = 'Low',
     group = g_Ov, inline = '1',display = display.none)
 
-const string g_Ah = 'After Hours'
+const string g_Ah = 'After Hours "Equity Only"'
 i_AhOnOff = input.enum(defval = State.on, title = '',
     group = g_Ah, inline = '1', display = display.none)
 i_AhHiClr = input.color(defval = CLR_AH_HI, title = 'High',
@@ -319,7 +319,7 @@ bts.push(bar.Times.size())
 bts.shift()
 // On sub-minute charts every new bar is finer than 1m, so treat each new bar
 // as a "new one-minute bar" trigger so session/segment logic fires correctly.
-newOneMinueBar = timeframe.isseconds
+newOneMinuteBar = timeframe.isseconds
           ? barstate.isnew
           : bar.isrealtime
           ? timeframe.multiplier == 1 and timeframe.isminutes
@@ -424,23 +424,26 @@ labelStrings(int i, string abrvStr, string fullStr) =>
             customName := 'LoD'
             customTip := 'Low of Day'
         YDH =>
-            customName := 'yHoD'
+            customName := 'yd HoD'
             customTip := 'Yesterday High of Day'
         YDL =>
-            customName := 'yLoD'
+            customName := 'yd LoD'
             customTip := 'Yesterday Low of Day'
         OPH =>
-            customName := 'OH'
+            customName := 'G op H'
             customTip := 'Globex Open High'
         OPL =>
-            customName := 'OL'
+            customName := 'G op L'
             customTip := 'Globex Open Low'
         TDO =>
             customName := 'Open'
             customTip := 'Today Open'
         YDO =>
-            customName := 'yOpen'
+            customName := 'yd Open'
             customTip := 'Yesterday Open'
+        YDC =>
+            customName := 'yd Close'
+            customTip := 'Yesterday Close'
 
     name = i_Abbreviate
               ? na(customName) ? ' ' + abrvStr + acronym(ohlca) + ' ' : ' ' + customName + ' '
@@ -717,7 +720,7 @@ var label asiaOrLowLabel = na
 var box nyOrBox = na
 var box londonOrBox = na
 var box asiaOrBox = na
-if newOneMinueBar
+if newOneMinuteBar
 
     // Common intraday segments
     newSession := session.isfirstbar
@@ -959,8 +962,9 @@ method set_close(int c, bool True = true) =>
         	    rth := true
         	    rth
         if rth
+            pmh = str.tonumber(mktStartTime) > str.tonumber(mktEndTime)
             for [i, t] in b.Times
-                if evalTime(mktStartTime, t, mktEndTime)
+                if pmh ? evalTime(mktStartTime, t, '2400') or evalTime('0000', t, mktEndTime) : evalTime(mktStartTime, t, mktEndTime)
                     n := i
                     n
         else if b.Closes.size() > 0
@@ -1018,19 +1022,24 @@ if MK1 and (not market or newSession)
 
 // -------------------------------------------- OBJECT UPDATE FUNCTIONS -------------------------------------------- //
 
+// @function Formats prices using the symbol mintick so trailing zeros are preserved.
+formatPrice(float price) =>
+    str.tostring(price, format.mintick)
+
 // @function Assembles the text and tooltip strings for a label.
 method new_label_string(level kl, string Type, array<string> strArr = na, array<float> fltArr = na) =>
-    price = str.tostring(math.round_to_mintick(kl.Price)) + ' '
+    price = formatPrice(kl.Price)
     if Type == 'text'
         if na(strArr)
-            kl.Name + (i_InclPrice ? '• ' + price : '')
+            (i_InclPrice ? ' ' + price + ' • ' : '') + str.trim(kl.Name) + ' '
         else
-            strArr.join(i_Abbreviate ? '/' : ' / ') + (i_InclPrice ? '• ' + (not na(fltArr)
-                  and fltArr.range() == 0
-                          ? price : str.tostring(fltArr.min()) + ' → ' + str.tostring(fltArr.max())) : '')
+            priceRange = not na(fltArr) and fltArr.range() == 0
+                  ? price
+                  : formatPrice(fltArr.min()) + ' → ' + formatPrice(fltArr.max())
+            (i_InclPrice ? ' ' + priceRange + ' • ' : '') + str.trim(strArr.join(i_Abbreviate ? '/' : ' / ')) + ' '
     else if not na(strArr) and not na(fltArr)
         for [i, str] in strArr
-            strArr.set(i, str + '• ' + str.tostring(fltArr.get(i)))
+            strArr.set(i, str + '• ' + formatPrice(fltArr.get(i)))
         strArr.join('\n')
     else
         kl.ToolTip + '• ' + price
@@ -1244,6 +1253,13 @@ if newSession and session > 0
 
 // ----------------------------------------------- BAR BY BAR LOGIC ------------------------------------------------ //
 
+// @function Builds the display text for an opening range label (price • name).
+orLabelText(float price, string fullName, string abrvName) =>
+    priceStr = formatPrice(price)
+    i_Abbreviate
+          ? (i_InclPrice ? ' ' + priceStr + ' • ' : ' ') + abrvName + ' '
+          : (i_InclPrice ? ' ' + priceStr + ' • ' : ' ') + fullName + ' '
+
 // @function Checks if a recent level should be managed.
 manageCriteria(i) =>
     switch i
@@ -1261,6 +1277,7 @@ YDO.set_open(manageCriteria(YDO))
 for i = TD to OV by 1
     i.manage_high_low(manageCriteria(i))
 
+// Keep Globex box, lines, and labels on one data source so they always stay in sync.
 globexHigh = na(sessionOrHigh) ? keyLevels.get(OPH).Level : sessionOrHigh
 globexLow = na(sessionOrLow) ? keyLevels.get(OPL).Level : sessionOrLow
 if useGlobexOr and not timeframe.isdwm and not na(globexHigh) and not na(globexLow)
@@ -1280,34 +1297,36 @@ if useGlobexOr and not timeframe.isdwm and not na(globexHigh) and not na(globexL
         globexOrBox.set_bgcolor(color.new(secondaryOrColor, i_OrRangeTransparency))
 
     if na(sessionOrHighLine)
-        sessionOrHighLine := line.new(x1SecondaryOr, sessionOrHigh, x2SecondaryOr, sessionOrHigh,
+        sessionOrHighLine := line.new(x1SecondaryOr, globexHigh, x2SecondaryOr, globexHigh,
               xloc.bar_time, extend.none, secondaryOrColor, lineStyle, i_Lw)
-        sessionOrLowLine := line.new(x1SecondaryOr, sessionOrLow, x2SecondaryOr, sessionOrLow,
+        sessionOrLowLine := line.new(x1SecondaryOr, globexLow, x2SecondaryOr, globexLow,
               xloc.bar_time, extend.none, secondaryOrColor, lineStyle, i_Lw)
     else
         sessionOrHighLine.set_x1(x1SecondaryOr)
         sessionOrHighLine.set_x2(x2SecondaryOr)
-        sessionOrHighLine.set_y1(sessionOrHigh)
-        sessionOrHighLine.set_y2(sessionOrHigh)
+        sessionOrHighLine.set_y1(globexHigh)
+        sessionOrHighLine.set_y2(globexHigh)
 
         sessionOrLowLine.set_x1(x1SecondaryOr)
         sessionOrLowLine.set_x2(x2SecondaryOr)
-        sessionOrLowLine.set_y1(sessionOrLow)
-        sessionOrLowLine.set_y2(sessionOrLow)
+        sessionOrLowLine.set_y1(globexLow)
+        sessionOrLowLine.set_y2(globexLow)
 
     if i_ShowLabel
         if na(sessionOrHighLabel)
-            sessionOrHighLabel := label.new(x2SecondaryOr, sessionOrHigh, i_Abbreviate ? ' gOH ' : ' Globex Open High ',
+            sessionOrHighLabel := label.new(x2SecondaryOr, globexHigh, orLabelText(globexHigh, 'Globex Open High', 'G op H'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, secondaryOrColor,
                   size.large, text.align_center, 'Globex Open High')
-            sessionOrLowLabel := label.new(x2SecondaryOr, sessionOrLow, i_Abbreviate ? ' gOL ' : ' Globex Open Low ',
+            sessionOrLowLabel := label.new(x2SecondaryOr, globexLow, orLabelText(globexLow, 'Globex Open Low', 'G op L'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, secondaryOrColor,
                   size.large, text.align_center, 'Globex Open Low')
         else
             sessionOrHighLabel.set_x(x2SecondaryOr)
-            sessionOrHighLabel.set_y(sessionOrHigh)
+            sessionOrHighLabel.set_y(globexHigh)
+            sessionOrHighLabel.set_text(orLabelText(globexHigh, 'Globex Open High', 'G op H'))
             sessionOrLowLabel.set_x(x2SecondaryOr)
-            sessionOrLowLabel.set_y(sessionOrLow)
+            sessionOrLowLabel.set_y(globexLow)
+            sessionOrLowLabel.set_text(orLabelText(globexLow, 'Globex Open Low', 'G op L'))
     else
         if not na(sessionOrHighLabel)
             sessionOrHighLabel.delete()
@@ -1365,17 +1384,19 @@ if useNyOr and not timeframe.isdwm and not na(nyOrHigh) and not na(nyOrLow)
 
     if i_ShowLabel
         if na(nyOrHighLabel)
-            nyOrHighLabel := label.new(x2NyOr, nyOrHigh, i_Abbreviate ? ' nOH ' : ' NY Open High ',
+            nyOrHighLabel := label.new(x2NyOr, nyOrHigh, orLabelText(nyOrHigh, 'NY Open High', 'N op H'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_NewYorkOpenColor,
                   size.large, text.align_center, 'New York Open High')
-            nyOrLowLabel := label.new(x2NyOr, nyOrLow, i_Abbreviate ? ' nOL ' : ' NY Open Low ',
+            nyOrLowLabel := label.new(x2NyOr, nyOrLow, orLabelText(nyOrLow, 'NY Open Low', 'N op L'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_NewYorkOpenColor,
                   size.large, text.align_center, 'New York Open Low')
         else
             nyOrHighLabel.set_x(x2NyOr)
             nyOrHighLabel.set_y(nyOrHigh)
+            nyOrHighLabel.set_text(orLabelText(nyOrHigh, 'NY Open High', 'N op H'))
             nyOrLowLabel.set_x(x2NyOr)
             nyOrLowLabel.set_y(nyOrLow)
+            nyOrLowLabel.set_text(orLabelText(nyOrLow, 'NY Open Low', 'N op L'))
     else
         if not na(nyOrHighLabel)
             nyOrHighLabel.delete()
@@ -1433,17 +1454,19 @@ if useLondonOr and not timeframe.isdwm and not na(londonOrHigh) and not na(londo
 
     if i_ShowLabel
         if na(londonOrHighLabel)
-            londonOrHighLabel := label.new(x2LondonOr, londonOrHigh, i_Abbreviate ? ' lOH ' : ' London Open High ',
+            londonOrHighLabel := label.new(x2LondonOr, londonOrHigh, orLabelText(londonOrHigh, 'London Open High', 'L op H'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_LondonOpenColor,
                   size.large, text.align_center, 'London Open High')
-            londonOrLowLabel := label.new(x2LondonOr, londonOrLow, i_Abbreviate ? ' lOL ' : ' London Open Low ',
+            londonOrLowLabel := label.new(x2LondonOr, londonOrLow, orLabelText(londonOrLow, 'London Open Low', 'L op L'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_LondonOpenColor,
                   size.large, text.align_center, 'London Open Low')
         else
             londonOrHighLabel.set_x(x2LondonOr)
             londonOrHighLabel.set_y(londonOrHigh)
+            londonOrHighLabel.set_text(orLabelText(londonOrHigh, 'London Open High', 'L op H'))
             londonOrLowLabel.set_x(x2LondonOr)
             londonOrLowLabel.set_y(londonOrLow)
+            londonOrLowLabel.set_text(orLabelText(londonOrLow, 'London Open Low', 'L op L'))
     else
         if not na(londonOrHighLabel)
             londonOrHighLabel.delete()
@@ -1501,17 +1524,19 @@ if useAsiaOr and not timeframe.isdwm and not na(asiaOrHigh) and not na(asiaOrLow
 
     if i_ShowLabel
         if na(asiaOrHighLabel)
-            asiaOrHighLabel := label.new(x2AsiaOr, asiaOrHigh, i_Abbreviate ? ' aOH ' : ' Asia Open High ',
+            asiaOrHighLabel := label.new(x2AsiaOr, asiaOrHigh, orLabelText(asiaOrHigh, 'Asia Open High', 'A op H'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_AsiaOpenColor,
                   size.large, text.align_center, 'Asia Open High')
-            asiaOrLowLabel := label.new(x2AsiaOr, asiaOrLow, i_Abbreviate ? ' aOL ' : ' Asia Open Low ',
+            asiaOrLowLabel := label.new(x2AsiaOr, asiaOrLow, orLabelText(asiaOrLow, 'Asia Open Low', 'A op L'),
                   xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_AsiaOpenColor,
                   size.large, text.align_center, 'Asia Open Low')
         else
             asiaOrHighLabel.set_x(x2AsiaOr)
             asiaOrHighLabel.set_y(asiaOrHigh)
+            asiaOrHighLabel.set_text(orLabelText(asiaOrHigh, 'Asia Open High', 'A op H'))
             asiaOrLowLabel.set_x(x2AsiaOr)
             asiaOrLowLabel.set_y(asiaOrLow)
+            asiaOrLowLabel.set_text(orLabelText(asiaOrLow, 'Asia Open Low', 'A op L'))
     else
         if not na(asiaOrHighLabel)
             asiaOrHighLabel.delete()
@@ -1535,21 +1560,6 @@ else
     if not na(asiaOrLowLine)
         asiaOrLowLine.delete()
         asiaOrLowLine := na
-
-// Draw the Globex box last so it is not hidden behind later session boxes.
-globexHighFinal = na(sessionOrHigh) ? keyLevels.get(OPH).Level : sessionOrHigh
-globexLowFinal = na(sessionOrLow) ? keyLevels.get(OPL).Level : sessionOrLow
-if useGlobexOr and not timeframe.isdwm and not na(globexHighFinal) and not na(globexLowFinal)
-    x1GlobexBox = na(sessionOrStartIndex) ? firstMarketBarIndex : sessionOrStartIndex
-    x2GlobexBox = bar.Index + numOfBars(fwdLen)
-    if not na(globexOrBox)
-        globexOrBox.delete()
-    globexOrBox := box.new(x1GlobexBox, globexHighFinal, x2GlobexBox, globexLowFinal,
-          xloc = xloc.bar_time, border_width = 0, border_color = CLR_NONE,
-          bgcolor = color.new(i_GlobexOpenColorLine, i_OrRangeTransparency))
-else if not na(globexOrBox)
-    globexOrBox.delete()
-    globexOrBox := na
 
 // Adjust lines and labels
 overlapped = map.new<float, string>()
