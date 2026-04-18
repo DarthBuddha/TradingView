@@ -4,7 +4,7 @@
 // @version=6
 indicator(
       title = 'Buddha Market Levels',
-      shorttitle = 'Mkt Lvl',
+      shorttitle = 'Levels',
       overlay = true,
       max_lines_count = 500,
       max_labels_count = 500,
@@ -34,18 +34,16 @@ const color CLR_YD_CL = color.rgb(255, 82, 82, 50)
 // @variable - Yesterday Open Color
 const color CLR_YD_OP = color.rgb(12, 50, 153, 0)
 
-// @variable - Opening Range Fill Color
-const color CLR_OR_FILL = color.rgb(0, 188, 212, 50)
-// @variable - Opening Range Box Line Color
-const color CLR_OR_LINE = color.rgb(0, 188, 212, 95)
-// @variable - Globex Opening Range Color
-const color CLR_OR_GLOBEX = color.rgb(0, 188, 212, 35)
+// @variable - Opening Range - Globex Line Color
+const color COLOR_GLOBEX = color.rgb(0, 188, 212, 35)
+// @variable - Opening Range - Globex Box Color
+const color CLR_OR_GLOBEX_BOX = color.rgb(0, 188, 212, 95)
 // @variable - New York Opening Range Color
-const color CLR_OR_NY = color.rgb(33, 150, 243, 35)
+const color COLOR_NEWYORK = color.rgb(224, 64, 251, 50)
 // @variable - London Opening Range Color
-const color CLR_OR_LONDON = color.rgb(76, 175, 80, 35)
+const color COLOR_LONDON = color.rgb(255, 235, 59, 50)
 // @variable - Asia Opening Range Color
-const color CLR_OR_ASIA = color.rgb(255, 193, 7, 35)
+const color COLOR_ASIA = color.rgb(0, 230, 118, 50)
 
 // @variable - After Hours Hi Color
 const color CLR_AH_HI = color.rgb(156, 39, 176, 0)
@@ -88,61 +86,109 @@ enum OpAnchor
 //-------------------------------------------------------------------------------------------------------< INPUTS >---//
 
 const string g_Pm = 'PreMarket'
-i_PmOnOff = input.enum(defval = State.on, title = '', group = g_Pm, inline = 'PmHiLo', display = display.none)
-i_PmHiClr = input.color(defval = CLR_PM_HI, title = 'High', group = g_Pm, inline = 'PmHiLo', display = display.none)
-i_PmLoClr = input.color(defval = CLR_PM_LO, title = 'Low', group = g_Pm, inline = 'PmHiLo', display = display.none)
+i_PmOnOff = input.enum(defval = State.on, title = '',
+    group = g_Pm, inline = 'PmHiLo', display = display.none)
+i_PmHiClr = input.color(defval = CLR_PM_HI, title = 'High',
+    group = g_Pm, inline = 'PmHiLo', display = display.none)
+i_PmLoClr = input.color(defval = CLR_PM_LO, title = 'Low',
+    group = g_Pm, inline = 'PmHiLo', display = display.none)
 
 const string g_Td = 'Today'
-i_TdOnOff = input.enum(defval = State.on, title = '', group = g_Td, inline = 'TdHiLo', display = display.none)
-i_TdHiClr = input.color(defval = CLR_TD_HI, title = 'High', group = g_Td, inline = 'TdHiLo', display = display.none)
-i_TdLoClr = input.color(defval = CLR_TD_LO, title = 'Low', group = g_Td, inline = 'TdHiLo', display = display.none)
+i_TdOnOff = input.enum(defval = State.on, title = '',
+    group = g_Td, inline = 'TdHiLo', display = display.none)
+i_TdHiClr = input.color(defval = CLR_TD_HI, title = 'High',
+    group = g_Td, inline = 'TdHiLo', display = display.none)
+i_TdLoClr = input.color(defval = CLR_TD_LO, title = 'Low',
+    group = g_Td, inline = 'TdHiLo', display = display.none)
 
-i_TdOpOnOff = input.enum(defval = State.on, title = '', group = g_Td, inline = 'TdOp', display = display.none)
-i_TdOpClr = input.color(defval = CLR_TD_OP, title = 'Open', group = g_Td, inline = 'TdOp', display = display.none)
+i_TdOpOnOff = input.enum(defval = State.off, title = '',
+    group = g_Td, inline = 'TdOp', display = display.none)
+i_TdOpClr = input.color(defval = CLR_TD_OP, title = 'Open',
+    group = g_Td, inline = 'TdOp', display = display.none)
 
-const string g_Op = 'Opening Range'
-i_OpOnOff = input.enum(defval = State.on, title = 'Primary', group = g_Op, inline = '1', display = display.none)
-i_OpFillClr = input.color(defval = CLR_OR_FILL, title = 'Fill', group = g_Op, inline = '1', display = display.none)
-i_OpLineClr = input.color(defval = CLR_OR_LINE, title = 'Box', group = g_Op, inline = '1', display = display.none)
-i_OpRange = input.int(defval = 15, title = 'Range', group = g_Op, inline = '1', display = display.none,
-    minval = 1, maxval = 60, step = 1)
-i_OpAnchor = input.enum(defval = OpAnchor.Session, title = 'Primary Anchor', group = g_Op, display = display.none)
+const string g_Open = 'Opening Range Settings'
+i_OpAnchor = input.enum(defval = OpAnchor.Session, title = 'Primary Anchor',
+    group = g_Open, display = display.none)
 
-// Optional multi-session OR overlays. Primary OR remains controlled by `Anchor`.
-i_ShowGlobexOr = input.bool(defval = true, title = 'Globex', group = g_Op, inline = 'ors1', display = display.none)
-i_GlobexOrClr = input.color(defval = CLR_OR_GLOBEX, title = '', group = g_Op, inline = 'ors1', display = display.none)
-i_ShowNyOr = input.bool(defval = true, title = 'New York', group = g_Op, inline = 'ors2', display = display.none)
-i_NyOrClr = input.color(defval = CLR_OR_NY, title = '', group = g_Op, inline = 'ors2', display = display.none)
-i_ShowLondonOr = input.bool(defval = false, title = 'London', group = g_Op, inline = 'ors3', display = display.none)
-i_LondonOrClr = input.color(defval = CLR_OR_LONDON, title = '', group = g_Op, inline = 'ors3', display = display.none)
-i_ShowAsiaOr = input.bool(defval = false, title = 'Asia', group = g_Op, inline = 'ors4', display = display.none)
-i_AsiaOrClr = input.color(defval = CLR_OR_ASIA, title = '', group = g_Op, inline = 'ors4', display = display.none)
+const string g_Globex = 'Globex - Opening Range'
+i_OnOff_GlobexOpen = input.enum(defval = State.on, title = '',
+    group = g_Globex, inline = '1', display = display.none)
+i_GlobexOpenColorLine = input.color(defval = COLOR_GLOBEX, title = '',
+    group = g_Globex, inline = '1', display = display.none)
+i_GlobexOpenColorBox = input.color(defval = CLR_OR_GLOBEX_BOX, title = '',
+    group = g_Globex, inline = '1', display = display.none)
+i_GlobexOpenStart = input.string(defval = '1800', title = 'Start',
+    group = g_Globex, inline = '1', display = display.none)
+i_GlobexOpenRange = input.int(defval = 15, title = 'Range',
+    group = g_Globex, inline = '1', display = display.none,
+    minval = 5, maxval = 60, step = 5)
 
-// Session start times can be adjusted if exchange schedules change.
-i_NyOrStart = input.string(defval = '0930', title = 'NY Start', group = g_Op, inline = 'orst', display = display.none)
-i_LondonOrStart = input.string(defval = '0300', title = 'London Start', group = g_Op, inline = 'orst', display = display.none)
-i_AsiaOrStart = input.string(defval = '2000', title = 'Asia Start', group = g_Op, inline = 'orst', display = display.none)
+const string g_OpenAsia = 'Asia - Opening Range'
+i_OnOff_AsiaOpen = input.enum(defval = State.on, title = '',
+    group = g_OpenAsia, inline = '1', display = display.none)
+i_AsiaOpenColor = input.color(defval = COLOR_ASIA, title = '',
+    group = g_OpenAsia, inline = '1', display = display.none)
+i_AsiaOpenStart = input.string(defval = '2000', title = 'Start',
+    group = g_OpenAsia, inline = '1', display = display.none)
+i_AsiaOpenRange = input.int(defval = 15, title = 'Range',
+    group = g_OpenAsia, inline = '1', display = display.none,
+    minval = 5, maxval = 60, step = 5)
+
+const string g_OpenLondon = 'London - Opening Range'
+i_OnOff_LondonOpen = input.enum(defval = State.on, title = '',
+    group = g_OpenLondon, inline = '1', display = display.none)
+i_LondonOpenColor = input.color(defval = COLOR_LONDON, title = '',
+    group = g_OpenLondon, inline = '1', display = display.none)
+i_LondonOpenStart = input.string(defval = '0300', title = 'Start',
+    group = g_OpenLondon, inline = '1', display = display.none)
+i_LondonOpennRange = input.int(defval = 15, title = 'Range',
+    group = g_OpenLondon, inline = '1', display = display.none,
+    minval = 5, maxval = 60, step = 5)
+
+const string g_OpenNewYork = 'New York - Opening Range'
+i_OnOff_NewYorkOpen = input.enum(defval = State.on, title = '',
+    group = g_OpenNewYork, inline = '1', display = display.none)
+i_NewYorkOpenColor = input.color(defval = COLOR_NEWYORK, title = '',
+    group = g_OpenNewYork, inline = '1', display = display.none)
+i_NewYorkOpenStart = input.string(defval = '0930', title = 'Start',
+    group = g_OpenNewYork, inline = '1', display = display.none)
+i_NewYorkOpenRange = input.int(defval = 15, title = 'Range',
+    group = g_OpenNewYork, inline = '1', display = display.none,
+    minval = 5, maxval = 60, step = 5)
 
 const string g_Ov = 'Over Night'
-i_OvOnOff = input.enum(defval = State.on, title = '', group = g_Ov, inline = '1', display = display.none)
-i_OvHiClr = input.color(defval = CLR_OV_HI, title = 'High', group = g_Ov, inline = '1',display = display.none)
-i_OvLoClr = input.color(defval = CLR_OV_LO, title = 'Low', group = g_Ov, inline = '1',display = display.none)
+i_OvOnOff = input.enum(defval = State.on, title = '',
+    group = g_Ov, inline = '1', display = display.none)
+i_OvHiClr = input.color(defval = CLR_OV_HI, title = 'High',
+    group = g_Ov, inline = '1',display = display.none)
+i_OvLoClr = input.color(defval = CLR_OV_LO, title = 'Low',
+    group = g_Ov, inline = '1',display = display.none)
 
 const string g_Ah = 'After Hours'
-i_AhOnOff = input.enum(defval = State.on, title = '', group = g_Ah, inline = '1', display = display.none)
-i_AhHiClr = input.color(defval = CLR_AH_HI, title = 'High', group = g_Ah, inline = '1',display = display.none)
-i_AhLoClr = input.color(defval = CLR_AH_LO, title = 'Low', group = g_Ah, inline = '1',display = display.none)
+i_AhOnOff = input.enum(defval = State.on, title = '',
+    group = g_Ah, inline = '1', display = display.none)
+i_AhHiClr = input.color(defval = CLR_AH_HI, title = 'High',
+    group = g_Ah, inline = '1',display = display.none)
+i_AhLoClr = input.color(defval = CLR_AH_LO, title = 'Low',
+    group = g_Ah, inline = '1',display = display.none)
 
 const string g_Yd = 'Yesterday'
-i_YdOnOff = input.enum(defval = State.on, title = '', group = g_Yd, inline = 'YdHiLo', display = display.none)
-i_YdHiClr = input.color(defval = CLR_YD_HI, title = 'High', group = g_Yd, inline = 'YdHiLo', display = display.none)
-i_YdLoClr = input.color(defval = CLR_YD_LO, title = 'Low', group = g_Yd, inline = 'YdHiLo', display = display.none)
+i_YdOnOff = input.enum(defval = State.on, title = '',
+    group = g_Yd, inline = 'YdHiLo', display = display.none)
+i_YdHiClr = input.color(defval = CLR_YD_HI, title = 'High',
+    group = g_Yd, inline = 'YdHiLo', display = display.none)
+i_YdLoClr = input.color(defval = CLR_YD_LO, title = 'Low',
+    group = g_Yd, inline = 'YdHiLo', display = display.none)
 
-i_YdOpOnOff = input.enum(defval = State.on, title = '', group = g_Yd, inline = 'YdOp', display = display.none)
-i_YdOpClr = input.color(defval = CLR_YD_OP, title = 'Open', group = g_Yd, inline = 'YdOp', display = display.none)
+i_YdOpOnOff = input.enum(defval = State.on, title = '',
+    group = g_Yd, inline = 'YdOp', display = display.none)
+i_YdOpClr = input.color(defval = CLR_YD_OP, title = 'Open',
+    group = g_Yd, inline = 'YdOp', display = display.none)
 
-i_YdClOnOff = input.enum(defval = State.on, title = '', group = g_Yd, inline = 'YdCl', display = display.none)
-i_YdClsClr = input.color(defval = CLR_YD_CL, title = 'Close', group = g_Yd, inline = 'YdCl', display = display.none)
+i_YdClOnOff = input.enum(defval = State.on, title = '',
+    group = g_Yd, inline = 'YdCl', display = display.none)
+i_YdClsClr = input.color(defval = CLR_YD_CL, title = 'Close',
+    group = g_Yd, inline = 'YdCl', display = display.none)
 
 
 const string g_S = 'Style'
@@ -189,13 +235,19 @@ i_MktHrs_Futures = input.session(
 bool useTd   = i_TdOnOff   == State.on ? true : false
 bool usePm   = i_PmOnOff   == State.on ? true : false
 bool useOv   = i_OvOnOff   == State.on ? true : false
-bool useOp   = i_OpOnOff   == State.on ? true : false
 bool useAh   = i_AhOnOff   == State.on ? true : false
 bool useYd   = i_YdOnOff   == State.on ? true : false
 bool useTdOp = i_TdOpOnOff == State.on ? true : false
 bool useYdOp = i_YdOpOnOff == State.on ? true : false
 bool useYdCl = i_YdClOnOff == State.on ? true : false
 
+// Opening Range
+bool use_GlobexOpen     = i_OnOff_GlobexOpen    == State.on ? true : false
+bool use_NewYorkOpen    = i_OnOff_NewYorkOpen   == State.on ? true : false
+bool use_LondonOpen     = i_OnOff_LondonOpen    == State.on ? true : false
+bool use_AsiaOpen       = i_OnOff_AsiaOpen      == State.on ? true : false
+
+// Styles
 var string lineStyle = i_Ls == Ls.dotted ? line.style_dotted
           : i_Ls == Ls.dashed ? line.style_dashed
           : line.style_solid
@@ -415,7 +467,7 @@ if Levels_Not_Initialized
     abrvStr = array.from('TD', 'OR', 'PM', 'ON', 'AH', 'YD')
     colors = array.from(
               i_TdHiClr, i_TdLoClr,
-              i_OpFillClr, i_OpLineClr,
+              i_GlobexOpenColorLine, i_GlobexOpenColorBox,
               i_PmHiClr, i_PmLoClr,
               i_OvHiClr, i_OvLoClr,
               i_AhHiClr, i_AhLoClr,
@@ -426,7 +478,7 @@ if Levels_Not_Initialized
               i_YdClsClr)
     lvlVis = array.from(
               useTd, useTd,
-              useOp, useOp,
+              use_GlobexOpen, use_GlobexOpen,
               usePm, usePm,
               useOv, useOv,
               useAh, useAh,
@@ -537,13 +589,13 @@ if Strings_Not_Initialized
     mktStartTime := startTime(mktHrs)
     mktEndTime := stopTime(mktHrs)
     sessionOpeningStartTime := mktStartTime
-    nyOpeningStartTime := i_NyOrStart
-    londonOpeningStartTime := i_LondonOrStart
-    asiaOpeningStartTime := i_AsiaOrStart
-    sessionOpenEndTime := addMinutesToTime(sessionOpeningStartTime, i_OpRange)
-    nyOpenEndTime := addMinutesToTime(nyOpeningStartTime, i_OpRange)
-    londonOpenEndTime := addMinutesToTime(londonOpeningStartTime, i_OpRange)
-    asiaOpenEndTime := addMinutesToTime(asiaOpeningStartTime, i_OpRange)
+    nyOpeningStartTime := i_NewYorkOpenStart
+    londonOpeningStartTime := i_LondonOpenStart
+    asiaOpeningStartTime := i_AsiaOpenStart
+    sessionOpenEndTime := addMinutesToTime(sessionOpeningStartTime, i_GlobexOpenRange)
+    nyOpenEndTime := addMinutesToTime(nyOpeningStartTime, i_NewYorkOpenRange)
+    londonOpenEndTime := addMinutesToTime(londonOpeningStartTime, i_LondonOpennRange)
+    asiaOpenEndTime := addMinutesToTime(asiaOpeningStartTime, i_AsiaOpenRange)
     sessionOpeningMins := sessionOpeningStartTime + '-' + sessionOpenEndTime
     nyOpeningMins := nyOpeningStartTime + '-' + nyOpenEndTime
     londonOpeningMins := londonOpeningStartTime + '-' + londonOpenEndTime
@@ -555,7 +607,7 @@ if Strings_Not_Initialized
     bfrMktHours := mktEndTime + '-' + mktStartTime
     noStartTime := setNearOpenStartTime(mktStartTime)
     nearOpenMin := noStartTime + '-' + mktStartTime
-    openEndTime := addMinutesToTime(openingStartTime, i_OpRange)
+    openEndTime := addMinutesToTime(openingStartTime, i_GlobexOpenRange)
     openingMins := openingStartTime + '-' + openEndTime
     minutesInDay := '1440'
     mktCloseToMidnight := mktEndTime + '-2400'
@@ -627,16 +679,16 @@ var firstOpenRangeBar = false
 // 1) Primary OR (box + OH/OL levels) still follows `Anchor` above.
 // 2) Supplemental OR lines below can track Globex/NY/London/Asia in parallel.
 
-bool primaryShowsSessionOr = useOp and syminfo.type == 'futures' and
+bool primaryShowsSessionOr = use_GlobexOpen and syminfo.type == 'futures' and
       (i_OpAnchor == OpAnchor.Session or i_OpAnchor == OpAnchor.Both)
-bool primaryShowsNyOr = useOp and syminfo.type == 'futures' and
+bool primaryShowsNyOr = use_GlobexOpen and syminfo.type == 'futures' and
       (i_OpAnchor == OpAnchor.NyOpen or i_OpAnchor == OpAnchor.Both)
 
 // Multi-session OR visibility toggles.
-var bool useGlobexOr = i_ShowGlobexOr and syminfo.type == 'futures' and not primaryShowsSessionOr
-var bool useNyOr = i_ShowNyOr and not primaryShowsNyOr
-var bool useLondonOr = i_ShowLondonOr
-var bool useAsiaOr = i_ShowAsiaOr
+var bool useGlobexOr = use_GlobexOpen and syminfo.type == 'futures' and not primaryShowsSessionOr
+var bool useNyOr = use_NewYorkOpen and not primaryShowsNyOr
+var bool useLondonOr = use_LondonOpen
+var bool useAsiaOr = use_AsiaOpen
 
 // Globex OR (session start, usually 18:00 ET for futures).
 var float sessionOrHigh = na
@@ -936,7 +988,7 @@ method set_close(int c, bool True = true) =>
 // @function Checks if a level should be set.
 ifOkayToSet(int i) =>
     switch i
-        OP => useOp and marketOpen
+        OP => use_GlobexOpen and marketOpen
         PM => usePm and (overnight and not useOv or premarket)
         OV => useOv and overnight
         AH => useAh and afterHours
@@ -1067,7 +1119,7 @@ method manage_high_low(int hi, bool True = true) =>
             orBox.set_left(bar.Index)
             orBox.set_border_width(0)
             orBox.set_border_color(CLR_NONE)
-            orBox.set_bgcolor(i_OpLineClr)
+            orBox.set_bgcolor(i_GlobexOpenColorBox)
         if marketOpen
             orBox.set_top(keyLevels.get(OPH).Level)
             orBox.set_bottom(keyLevels.get(OPL).Level)
@@ -1211,7 +1263,7 @@ if newSession and session > 0
 // @function Checks if a recent level should be managed.
 manageCriteria(i) =>
     switch i
-        OP => useOp and marketOpen
+        OP => use_GlobexOpen and marketOpen
         PM => usePm and (premarket or overnight and not useOv)
         OV => useOv and overnight
         TD => useTd and mktSession
@@ -1228,7 +1280,7 @@ for i = TD to OV by 1
 if useGlobexOr and not timeframe.isdwm and not na(sessionOrHigh) and not na(sessionOrLow)
     x1SecondaryOr = na(sessionOrStartIndex) ? bar.Index : sessionOrStartIndex
     x2SecondaryOr = bar.Index + numOfBars(fwdLen)
-    secondaryOrColor = i_GlobexOrClr
+    secondaryOrColor = i_GlobexOpenColorLine
 
     if na(sessionOrHighLine)
         sessionOrHighLine := line.new(x1SecondaryOr, sessionOrHigh, x2SecondaryOr, sessionOrHigh,
@@ -1286,9 +1338,9 @@ if useNyOr and not timeframe.isdwm and not na(nyOrHigh) and not na(nyOrLow)
 
     if na(nyOrHighLine)
         nyOrHighLine := line.new(x1NyOr, nyOrHigh, x2NyOr, nyOrHigh,
-              xloc.bar_time, extend.none, i_NyOrClr, line.style_dashed, i_Lw)
+              xloc.bar_time, extend.none, i_NewYorkOpenColor, line.style_dashed, i_Lw)
         nyOrLowLine := line.new(x1NyOr, nyOrLow, x2NyOr, nyOrLow,
-              xloc.bar_time, extend.none, i_NyOrClr, line.style_dashed, i_Lw)
+              xloc.bar_time, extend.none, i_NewYorkOpenColor, line.style_dashed, i_Lw)
     else
         nyOrHighLine.set_x1(x1NyOr)
         nyOrHighLine.set_x2(x2NyOr)
@@ -1303,10 +1355,10 @@ if useNyOr and not timeframe.isdwm and not na(nyOrHigh) and not na(nyOrLow)
     if i_ShowLabel
         if na(nyOrHighLabel)
             nyOrHighLabel := label.new(x2NyOr, nyOrHigh, i_Abbreviate ? ' nOH ' : ' NY OR High ',
-                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_NyOrClr,
+                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_NewYorkOpenColor,
                   size.large, text.align_center, 'New York Opening Range High')
             nyOrLowLabel := label.new(x2NyOr, nyOrLow, i_Abbreviate ? ' nOL ' : ' NY OR Low ',
-                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_NyOrClr,
+                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_NewYorkOpenColor,
                   size.large, text.align_center, 'New York Opening Range Low')
         else
             nyOrHighLabel.set_x(x2NyOr)
@@ -1340,9 +1392,9 @@ if useLondonOr and not timeframe.isdwm and not na(londonOrHigh) and not na(londo
 
     if na(londonOrHighLine)
         londonOrHighLine := line.new(x1LondonOr, londonOrHigh, x2LondonOr, londonOrHigh,
-              xloc.bar_time, extend.none, i_LondonOrClr, line.style_dashed, i_Lw)
+              xloc.bar_time, extend.none, i_LondonOpenColor, line.style_dashed, i_Lw)
         londonOrLowLine := line.new(x1LondonOr, londonOrLow, x2LondonOr, londonOrLow,
-              xloc.bar_time, extend.none, i_LondonOrClr, line.style_dashed, i_Lw)
+              xloc.bar_time, extend.none, i_LondonOpenColor, line.style_dashed, i_Lw)
     else
         londonOrHighLine.set_x1(x1LondonOr)
         londonOrHighLine.set_x2(x2LondonOr)
@@ -1357,10 +1409,10 @@ if useLondonOr and not timeframe.isdwm and not na(londonOrHigh) and not na(londo
     if i_ShowLabel
         if na(londonOrHighLabel)
             londonOrHighLabel := label.new(x2LondonOr, londonOrHigh, i_Abbreviate ? ' lOH ' : ' London OR High ',
-                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_LondonOrClr,
+                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_LondonOpenColor,
                   size.large, text.align_center, 'London Opening Range High')
             londonOrLowLabel := label.new(x2LondonOr, londonOrLow, i_Abbreviate ? ' lOL ' : ' London OR Low ',
-                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_LondonOrClr,
+                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_LondonOpenColor,
                   size.large, text.align_center, 'London Opening Range Low')
         else
             londonOrHighLabel.set_x(x2LondonOr)
@@ -1394,9 +1446,9 @@ if useAsiaOr and not timeframe.isdwm and not na(asiaOrHigh) and not na(asiaOrLow
 
     if na(asiaOrHighLine)
         asiaOrHighLine := line.new(x1AsiaOr, asiaOrHigh, x2AsiaOr, asiaOrHigh,
-              xloc.bar_time, extend.none, i_AsiaOrClr, line.style_dashed, i_Lw)
+              xloc.bar_time, extend.none, i_AsiaOpenColor, line.style_dashed, i_Lw)
         asiaOrLowLine := line.new(x1AsiaOr, asiaOrLow, x2AsiaOr, asiaOrLow,
-              xloc.bar_time, extend.none, i_AsiaOrClr, line.style_dashed, i_Lw)
+              xloc.bar_time, extend.none, i_AsiaOpenColor, line.style_dashed, i_Lw)
     else
         asiaOrHighLine.set_x1(x1AsiaOr)
         asiaOrHighLine.set_x2(x2AsiaOr)
@@ -1411,10 +1463,10 @@ if useAsiaOr and not timeframe.isdwm and not na(asiaOrHigh) and not na(asiaOrLow
     if i_ShowLabel
         if na(asiaOrHighLabel)
             asiaOrHighLabel := label.new(x2AsiaOr, asiaOrHigh, i_Abbreviate ? ' aOH ' : ' Asia OR High ',
-                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_AsiaOrClr,
+                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_AsiaOpenColor,
                   size.large, text.align_center, 'Asia Opening Range High')
             asiaOrLowLabel := label.new(x2AsiaOr, asiaOrLow, i_Abbreviate ? ' aOL ' : ' Asia OR Low ',
-                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_AsiaOrClr,
+                  xloc.bar_time, yloc.price, CLR_NONE, label.style_label_left, i_AsiaOpenColor,
                   size.large, text.align_center, 'Asia Opening Range Low')
         else
             asiaOrHighLabel.set_x(x2AsiaOr)
