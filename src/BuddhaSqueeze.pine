@@ -3,8 +3,8 @@
 
 // @version=6
 indicator(
-      title='Buddha Squeeze', 
-      shorttitle='Squeeze', 
+      title='Buddha Squeeze',
+      shorttitle='Squeeze',
       overlay=false)
 
 //----------------------------------------------------------------------------------------------------< CONSTANTS >---//
@@ -25,7 +25,7 @@ i_Length = input.int(21, title='Chart Length', options=[8,13,21,34,55], group=gr
 i_StdDevBB = input.float(2.1, title='Bollinger Band StdDev', step=0.1, group=groupSqueeze)
 i_StdDevKC = input.float(1.4, title='Keltner Channel StdDev', step=0.1, group=groupSqueeze)
 
-i_TextSize = input.string('large', title='Table Text Size', 
+i_TextSize = input.string('large', title='Table Text Size',
   options=['tiny','small','normal','large','huge'], group=groupDisplay)
 
 //----------------------------------------------------------------------------------------------------< FUNCTIONS >---//
@@ -44,7 +44,7 @@ oscBase = (ta.highest(high, i_Length) + ta.lowest(low, i_Length)) / 2 + ta.ema(c
 oscillator = ta.linreg(close - oscBase / 2, i_Length, 0)
 
 // Oscillator color
-oscillatorColor = oscillator > oscillator[1] 
+oscillatorColor = oscillator > oscillator[1]
   ? (oscillator > 0 ? DARK_GREEN : LIGHT_GREEN)
   : (oscillator > 0 ? LIGHT_RED : DARK_RED)
 
@@ -67,22 +67,22 @@ squeezeSignalCount = squeezeCount > 0 ? str.tostring(squeezeCount) : na
 
 //-------------------------------------------------------------------------------------------------------< VISUAL >---//
 // Zero Line
-hline(0, 
-  title = 'Zero Line', 
-  color = color.rgb(255,255,255,70), 
+hline(0,
+  title = 'Zero Line',
+  color = color.rgb(255,255,255,70),
   linestyle = hline.style_solid)
 
 // Oscillator Bars
-plot(oscillator * 100, 
-  title = 'TTM', 
-  color = oscillatorColor, 
+plot(oscillator * 100,
+  title = 'TTM',
+  color = oscillatorColor,
   style = plot.style_columns)
 
 // Squeeze Circles
-plot(0, 
-  title = 'Squeeze', 
-  color = squeezeSignal ? YELLOW : na, linewidth = 2, 
-  style = plot.style_steplinebr, 
+plot(0,
+  title = 'Squeeze',
+  color = squeezeSignal ? YELLOW : na, linewidth = 2,
+  style = plot.style_steplinebr,
   display = display.pane)
 
 //-------------------------------------------------------------------------------------------------------< TABLES >---//
@@ -91,14 +91,14 @@ var table squeezeTable = table.new(position.middle_right, columns=1, rows=2)
 
 if barstate.islast
     table.cell(
-      table_id = squeezeTable, 
-      column = 0, row = 0, 
+      table_id = squeezeTable,
+      column = 0, row = 0,
       text = 'S', text_color = BLACK, text_size = i_TextSize,
       bgcolor = squeezeSignal ? YELLOW : GRAY,
       text_formatting = text.format_bold)
     table.cell(
-      table_id = squeezeTable, 
-      column = 0, row = 1, 
+      table_id = squeezeTable,
+      column = 0, row = 1,
       text = squeezeSignalCount, text_color = BLACK, text_size = i_TextSize,
       bgcolor = oscillatorColor,
       text_formatting = text.format_bold)

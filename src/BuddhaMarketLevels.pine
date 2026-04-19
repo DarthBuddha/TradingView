@@ -1148,24 +1148,6 @@ if newSession and session > 0
                 hideLevel(OVH, OVL)
 
     // Delete the old stuff
-    if not na(globexOrBox)
-        globexOrBox.delete()
-        globexOrBox := na
-    if not na(sessionOrHighLine)
-        sessionOrHighLine.delete()
-        sessionOrHighLine := na
-    if not na(sessionOrLowLine)
-        sessionOrLowLine.delete()
-        sessionOrLowLine := na
-    if not na(sessionOrHighLabel)
-        sessionOrHighLabel.delete()
-        sessionOrHighLabel := na
-    if not na(sessionOrLowLabel)
-        sessionOrLowLabel.delete()
-        sessionOrLowLabel := na
-    sessionOrHigh := na
-    sessionOrLow := na
-    sessionOrStartIndex := na
     if not na(nyOrHighLine)
         nyOrHighLine.delete()
         nyOrHighLine := na
