@@ -1,5 +1,9 @@
 # Darth Buddha's - Trading View Scripts
 
+## Version 0.0.10
+
+* Change - Buddha Money Flow. Changes to Table.
+
 ## Version 0.0.9
 
 * Change - Buddha Market Levels. Fixed Globex Opening range.
