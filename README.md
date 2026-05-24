@@ -4,6 +4,7 @@ Custom Pine Script indicators focused on structure, sessions, and volume/flow co
 
 ## Script List
 
+- Buddha Bollinger Bands: Multi-timeframe Bollinger envelopes with dual standard-deviation zones.
 - Buddha Bands: Four SMA bands using 20-21, 50-55, 200-233, and 365-377 ranges.
 - Buddha Money Flow: Footprint-based buy/sell/delta flow panel and histogram.
 - Buddha Squeeze: TTM Squeeze style momentum/volatility oscillator.
@@ -42,6 +43,7 @@ Notes:
 
 ## Repository Layout
 
+- `src/BuddhaBollingerBands.pine`
 - `src/BuddhaBands.pine`
 - `src/BuddhaMoneyFlow.pine`
 - `src/BuddhaSqueeze.pine`

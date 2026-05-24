@@ -1,0 +1,200 @@
+// This Pine Script™ code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Darth_Buddha
+
+//@version=6
+indicator(
+  title = 'Buddha Bollinger Bands',
+  shorttitle = 'BB',
+  overlay = true)
+
+//----------------------------------------------------------------------------------------------------< CONSTANTS >---//
+
+const color CLR_BOLLINGER = color.rgb(255, 255, 255, 50)
+
+//-------------------------------------------------------------------------------------------------------< INPUTS >---//
+
+const string GP_MAIN = 'Bollinger Band'
+const string GP_STYLE = 'Style'
+
+//@variable     Input : Bollinger Bands, On/Off Switch
+bollinger_OnOff = input.bool(defval = true, title = 'Bollinger Bands',
+  inline = '1', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, MA Type to use
+band_MaType = input.string(defval = 'SMA', title = 'MA Type',
+  options = ['SMA', 'EMA', 'RMA', 'WMA', 'VWMA'],
+  inline = '1', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, Timeframe Anchor
+bollinger_Timeframe = input.timeframe(defval = '1W', title = 'Timeframe',
+  options = ['1D', '1W', '1M'],
+  inline = '2', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, Length
+bollinger_Length = input.int(defval = 21, title = 'Length',
+  minval = 1, maxval = 365, step = 1,
+  inline = '2', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, StdDev Slow
+bollinger_MultSlow = input.float(defval = 2.0, title = 'StdDev Slow',
+  minval = 0.25, maxval = 10.0, step = 0.25,
+  inline = '3', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, StdDev Fast
+bollinger_MultFast = input.float(defval = 3.0, title = 'StdDev Fast',
+  minval = 0.25, maxval = 10.0, step = 0.25,
+  inline = '3', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, Color
+bollinger_Color = input.color(defval = CLR_BOLLINGER, title = 'Band Color',
+  inline = '4', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, Line Width
+bollinger_Lw = input.int(defval = 1, title = 'Line Size',
+  options = [1, 2, 3, 4, 5],
+  inline = '4', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, Offset
+bollinger_Offset = input.int(defval = 0, title = 'Offset',
+  minval = -365, maxval = 365, step = 1,
+  inline = '5', group = GP_MAIN)
+
+//@variable     Input : Bollinger Bands, Fill Transparency
+band_Transparency = input.int(defval = 90, title = 'Band Fill Transparency',
+  minval = 0, maxval = 100, step = 1,
+  inline = '5', group = GP_STYLE)
+
+//@variable     Input : Bollinger Bands, Extend Right
+bollinger_Extend = input.bool(defval = true, title = 'Extend Right (Dotted)',
+  inline = '6', group = GP_STYLE)
+
+//----------------------------------------------------------------------------------------------------< FUNCTIONS >---//
+
+//@function     Switch for moving averages.
+//@returns      Correct moving average.
+method maSwitch(simple string option, series float source, simple int length) =>
+    movingAverage = switch option
+        'EMA' => ta.ema(source, length)
+        'SMA' => ta.sma(source, length)
+        'RMA' => ta.rma(source, length)
+        'VWMA' => ta.vwma(source, length)
+        'WMA' => ta.wma(source, length)
+    movingAverage
+
+
+//@function     Time multiplyer based on current time period for Chart Point 1
+//@returns      Adjusted Time based on current timeframe
+method timemult(int mult) =>
+    timeframe.multiplier * (timeframe.isseconds
+      ? 1000 : timeframe.isminutes
+      ? 60000 : timeframe.isdaily
+      ? 86400000 : timeframe.isweekly
+      ? 604800000 : timeframe.ismonthly
+      ? 2629800000 : 1) * mult
+
+//-------------------------------------------------------------------------------------------------< CALCULATIONS >---//
+
+//@variable     Caculation : Bollinger Bands, Upper Slow Dev Data
+bollinger_UpperSlow = request.security(syminfo.tickerid, bollinger_Timeframe,
+  maSwitch(option = band_MaType, source = close, length = bollinger_Length) + (bollinger_MultSlow * ta.stdev(close, bollinger_Length)))
+//@variable     Caculation : Bollinger Bands, Lower Slow Dev Data
+bollinger_LowerSlow = request.security(syminfo.tickerid, bollinger_Timeframe,
+  maSwitch(option = band_MaType, source = close, length = bollinger_Length) - (bollinger_MultSlow * ta.stdev(close, bollinger_Length)))
+//@variable     Caculation : Bollinger Bands, Upper Fast Dev Data
+bollinger_UpperFast = request.security(syminfo.tickerid, bollinger_Timeframe,
+  maSwitch(option = band_MaType, source = close, length = bollinger_Length) + (bollinger_MultFast * ta.stdev(close, bollinger_Length)))
+//@variable     Caculation : Bollinger Bands, Lower Fast Dev Data
+bollinger_LowerFast = request.security(syminfo.tickerid, bollinger_Timeframe,
+  maSwitch(option = band_MaType, source = close, length = bollinger_Length) - (bollinger_MultFast * ta.stdev(close, bollinger_Length)))
+
+visibleBands = bollinger_OnOff and not timeframe.ismonthly
+
+//------------------------------------------------------------------------------------------------------< VISUALS >---//
+
+//@variable     Visual : Bollinger Bands, Slow Band Upper Plot Line
+bollinger_UpperSlowPlot = plot(series = visibleBands ? bollinger_UpperSlow : na, title = 'BB',
+  color = bollinger_Color, linewidth = math.max(1, bollinger_Lw), style = plot.style_line,
+  offset = bollinger_Offset, editable = false, force_overlay = true)
+//@variable     Visual : Bollinger Bands, Slow Band Lower Plot Line
+bollinger_LowerSlowPlot = plot(series = visibleBands ? bollinger_LowerSlow : na, title = 'BB',
+  color = bollinger_Color, linewidth = math.max(1, bollinger_Lw), style = plot.style_line,
+  offset = bollinger_Offset, editable = false, force_overlay = true)
+//@variable     Visual : Bollinger Bands, Fast Band Upper Plot Line
+bollinger_UpperFastPlot = plot(series = visibleBands ? bollinger_UpperFast : na, title = 'BB',
+  color = bollinger_Color, linewidth = math.max(1, bollinger_Lw), style = plot.style_line,
+  offset = bollinger_Offset, editable = false, force_overlay = true)
+//@variable     Visual : Bollinger Bands, Fast Band Lower Plot Line
+bollinger_LowerFastPlot = plot(series = visibleBands ? bollinger_LowerFast : na, title = 'BB',
+  color = bollinger_Color, linewidth = math.max(1, bollinger_Lw), style = plot.style_line,
+  offset = bollinger_Offset, editable = false, force_overlay = true)
+//---< Fill Upper Band Plots
+fill(plot1 = bollinger_UpperSlowPlot, plot2 = bollinger_UpperFastPlot, color = color.new(color.red, band_Transparency))
+//---< Fill Lower Band Plots
+fill(plot1 = bollinger_LowerSlowPlot, plot2 = bollinger_LowerFastPlot, color = color.new(color.green, band_Transparency))
+//@variable     Visual : Bollinger Bands, Slow Band Upper Draw Line
+var line bollinger_UpperSlowLine = na
+//@variable     Visual : Bollinger Bands, Fast Band Upper Draw Line
+var line bollinger_UpperFastLine = na
+//@variable     Visual : Bollinger Bands, Slow Band Lower Draw Line
+var line bollinger_LowerSlowLine = na
+//@variable     Visual : Bollinger Bands, Fast Band Lower Draw Line
+var line bollinger_LowerFastLine = na
+
+if barstate.islast and visibleBands and bollinger_Extend
+    x1 = last_bar_time
+    x2 = last_bar_time + timemult(1)
+
+    if na(bollinger_UpperSlowLine)
+        bollinger_UpperSlowLine := line.new(x1, bollinger_UpperSlow, x2, bollinger_UpperSlow,
+          xloc = xloc.bar_time, extend = extend.right, color = bollinger_Color,
+          style = line.style_dotted, width = bollinger_Lw, force_overlay = true)
+    else
+        line.set_xy1(bollinger_UpperSlowLine, x1, bollinger_UpperSlow)
+        line.set_xy2(bollinger_UpperSlowLine, x2, bollinger_UpperSlow)
+        line.set_color(bollinger_UpperSlowLine, bollinger_Color)
+        line.set_width(bollinger_UpperSlowLine, bollinger_Lw)
+
+    if na(bollinger_UpperFastLine)
+        bollinger_UpperFastLine := line.new(x1, bollinger_UpperFast, x2, bollinger_UpperFast,
+          xloc = xloc.bar_time, extend = extend.right, color = bollinger_Color,
+          style = line.style_dotted, width = bollinger_Lw, force_overlay = true)
+    else
+        line.set_xy1(bollinger_UpperFastLine, x1, bollinger_UpperFast)
+        line.set_xy2(bollinger_UpperFastLine, x2, bollinger_UpperFast)
+        line.set_color(bollinger_UpperFastLine, bollinger_Color)
+        line.set_width(bollinger_UpperFastLine, bollinger_Lw)
+
+    if na(bollinger_LowerSlowLine)
+        bollinger_LowerSlowLine := line.new(x1, bollinger_LowerSlow, x2, bollinger_LowerSlow,
+          xloc = xloc.bar_time, extend = extend.right, color = bollinger_Color,
+          style = line.style_dotted, width = bollinger_Lw, force_overlay = true)
+    else
+        line.set_xy1(bollinger_LowerSlowLine, x1, bollinger_LowerSlow)
+        line.set_xy2(bollinger_LowerSlowLine, x2, bollinger_LowerSlow)
+        line.set_color(bollinger_LowerSlowLine, bollinger_Color)
+        line.set_width(bollinger_LowerSlowLine, bollinger_Lw)
+
+    if na(bollinger_LowerFastLine)
+        bollinger_LowerFastLine := line.new(x1, bollinger_LowerFast, x2, bollinger_LowerFast,
+          xloc = xloc.bar_time, extend = extend.right, color = bollinger_Color,
+          style = line.style_dotted, width = bollinger_Lw, force_overlay = true)
+    else
+        line.set_xy1(bollinger_LowerFastLine, x1, bollinger_LowerFast)
+        line.set_xy2(bollinger_LowerFastLine, x2, bollinger_LowerFast)
+        line.set_color(bollinger_LowerFastLine, bollinger_Color)
+        line.set_width(bollinger_LowerFastLine, bollinger_Lw)
+else
+    if not na(bollinger_UpperSlowLine)
+        line.delete(bollinger_UpperSlowLine)
+        bollinger_UpperSlowLine := na
+    if not na(bollinger_UpperFastLine)
+        line.delete(bollinger_UpperFastLine)
+        bollinger_UpperFastLine := na
+    if not na(bollinger_LowerSlowLine)
+        line.delete(bollinger_LowerSlowLine)
+        bollinger_LowerSlowLine := na
+    if not na(bollinger_LowerFastLine)
+        line.delete(bollinger_LowerFastLine)
+        bollinger_LowerFastLine := na
+
+//----------------------------------------------------< END-CODE >----------------------------------------------------//

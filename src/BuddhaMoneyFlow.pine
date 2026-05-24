@@ -24,12 +24,6 @@ const color CLR_FRAME = color.rgb(0, 0, 0)
 // @variable - Table text color
 const color CLR_TEXT = color.rgb(0, 0, 0)
 
-//----------------------------------------------------< STRINGs
-const string g_Colors = "Volume"
-const string g_Table  = 'Table Style'
-const string g_Footprint = 'Footprint'
-const string g_Display = 'Display'
-
 //----------------------------------------------------< ENUMs
 enum State
     On = 'ON'
@@ -50,6 +44,7 @@ enum CvdMode
 
 //-------------------------------------------------------------------------------------------------------< INPUTs >---//
 
+const string g_Colors = "Volume Color"
 // @variable - User input Buy volume color
 i_CLR_B = input.color(CLR_B, 'Buy', group = g_Colors, inline = '1')
 // @variable - User input Sell volume color
@@ -57,15 +52,16 @@ i_CLR_S = input.color(CLR_S, 'Sell', group = g_Colors, inline = '1')
 // @variable - User input Neutral volume color
 i_CLR_T = input.color(CLR_T, 'Total', group = g_Colors, inline = '1')
 
+const string g_Table  = 'Table Settings'
+i_TbState = input.enum(State.On,'', group = g_Table, inline = '1')
+i_TxSize = input.enum(Tx.Large, '', group = g_Table, inline = '1')
 
-i_TbState = input.enum(State.On,'')
-
-i_TxSize = input.enum(Tx.Normal, '')
-
+const string g_Footprint = 'Footprint Settings'
 i_TicksPerRow = input.int(25, 'Ticks Per Row', minval = 1, group = g_Footprint)
 i_ValueAreaPct = input.float(70.0, 'Value Area %', minval = 1.0, maxval = 100.0, step = 1.0, group = g_Footprint)
 i_ImbalancePct = input.float(300.0, 'Imbalance %', minval = 1.0, step = 25.0, group = g_Footprint)
 
+const string g_Display = 'Display Settings'
 i_ShowTotalVolume = input.bool(true, 'Show Total Volume', group = g_Display)
 i_ShowTable = input.bool(true, 'Show Table', group = g_Display)
 i_PositiveColumnsOnly = input.bool(true, 'Columns Above Zero', group = g_Display)
@@ -86,7 +82,7 @@ clamp(x, lo, hi) =>
     math.max(lo, math.min(hi, x))
 
 fmtPct(value) =>
-  na(value) ? 'n/a' : str.tostring(value, '#.##') + '%'
+  na(value) ? 'n/a' : str.tostring(value, '###.##') + '%'
 
 //-------------------------------------------------------------------------------------------------< CALCULATIONs >---//
 
@@ -138,8 +134,8 @@ plotDeltaValue = i_PositiveColumnsOnly ? deltaAbs : deltaValue
 
 vmax = math.max(nz(totalVol, 0.0), 1e-10)
 
-cvdBg = deltaValue >= 0 
-      ? color.from_gradient(deltaValue, 0.0,  vmax, CLR_T, color.lime) 
+cvdBg = deltaValue >= 0
+      ? color.from_gradient(deltaValue, 0.0,  vmax, CLR_T, color.lime)
       : color.from_gradient(deltaValue, -vmax, 0.0, color.red, CLR_T)
 
 //--------------------------------------------------------------------------------------------------------< PLOTs >---//
@@ -154,10 +150,10 @@ hline(0, 'Zero', color.new(CLR_T, 65), hline.style_dotted)
 
 //-------------------------------------------------------------------------------------------------------< TABLEs >---//
 
-var t_CVD = table.new(position = position.middle_right, columns = 2, rows = 7, force_overlay = false)
+var t_CVD = table.new(position = position.middle_right, columns = 2, rows = 3, force_overlay = false)
 
-TW2 = 0
-TH2 = 30
+TW = 10
+TH = 33
 
 table.set_frame_color(t_CVD, CLR_FRAME)
 table.set_border_color(t_CVD, CLR_FRAME)
@@ -167,20 +163,19 @@ table.set_border_width(t_CVD, 5)
 if barstate.islast and switchState(i_TbState) and i_ShowTable
     textSize = str.lower(str.tostring(i_TxSize))
 
-    
-    table.cell(t_CVD, 0, 0, 'Buy', TW2, TH2, CLR_TEXT,
-      text_size = textSize, bgcolor = CLR_B, text_formatting = text.format_bold)
-    table.cell(t_CVD, 1, 0, str.tostring(buyVol, format.volume) + ' (' + fmtPct(buyPct) + ')', TW2, TH2, CLR_TEXT,
-      text_size = textSize, bgcolor = CLR_B, text_formatting = text.format_bold)
+    table.cell(t_CVD, 0, 0, str.tostring(buyVol, '#,###,###'), TW, TH, CLR_TEXT,
+      text_halign = text.align_right, text_size = textSize, bgcolor = CLR_B, text_formatting = text.format_bold)
+    table.cell(t_CVD, 1, 0, fmtPct(buyPct), TW, TH, CLR_TEXT,
+      text_halign = text.align_right, text_size = textSize, bgcolor = CLR_B, text_formatting = text.format_bold)
 
-    table.cell(t_CVD, 0, 1, 'Delta', TW2, TH2, CLR_TEXT,
-      text_size = textSize, bgcolor = deltaColor, text_formatting = text.format_bold)
-    table.cell(t_CVD, 1, 1, str.tostring(deltaValue, format.volume) + ' (' + fmtPct(deltaPct) + ')', TW2, TH2, CLR_TEXT,
-      text_size = textSize, bgcolor = cvdBg, text_formatting = text.format_bold)
+    table.cell(t_CVD, 0, 1, str.tostring(deltaValue, '#,###,###'), TW, TH, CLR_TEXT,
+      text_halign = text.align_right, text_size = textSize, bgcolor = cvdBg, text_formatting = text.format_bold)
+    table.cell(t_CVD, 1, 1, fmtPct(deltaPct), TW, TH, CLR_TEXT,
+      text_halign = text.align_right, text_size = textSize, bgcolor = cvdBg, text_formatting = text.format_bold)
 
-    table.cell(t_CVD, 0, 2, 'Sell', TW2, TH2, CLR_TEXT,
-      text_size = textSize, bgcolor = CLR_S, text_formatting = text.format_bold)
-    table.cell(t_CVD, 1, 2, str.tostring(sellVol, format.volume) + ' (' + fmtPct(sellPct) + ')', TW2, TH2, CLR_TEXT,
-      text_size = textSize, bgcolor = CLR_S, text_formatting = text.format_bold)
+    table.cell(t_CVD, 0, 2, '- ' + str.tostring(sellVol, '#,###,###'), TW, TH, CLR_TEXT,
+      text_halign = text.align_right, text_size = textSize, bgcolor = CLR_S, text_formatting = text.format_bold)
+    table.cell(t_CVD, 1, 2, '- ' + fmtPct(sellPct), TW, TH, CLR_TEXT,
+      text_halign = text.align_right, text_size = textSize, bgcolor = CLR_S, text_formatting = text.format_bold)
 
 //----------------------------------------------------< END-CODE >----------------------------------------------------//

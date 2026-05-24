@@ -1,5 +1,9 @@
 # Darth Buddha's - Trading View Scripts
 
+## Version 0.0.11
+
+* Change - Buddha Bollinger Bands. Optimized calculations and added to repository collection docs.
+
 ## Version 0.0.10
 
 * Change - Buddha Money Flow. Changes to Table.
