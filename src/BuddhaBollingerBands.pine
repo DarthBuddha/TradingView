@@ -94,16 +94,16 @@ method timemult(int mult) =>
 
 //-------------------------------------------------------------------------------------------------< CALCULATIONS >---//
 
-//@variable     Caculation : Bollinger Bands, Upper Slow Dev Data
+//@variable     Calculation : Bollinger Bands, Upper Slow Dev Data
 bollinger_UpperSlow = request.security(syminfo.tickerid, bollinger_Timeframe,
   maSwitch(option = band_MaType, source = close, length = bollinger_Length) + (bollinger_MultSlow * ta.stdev(close, bollinger_Length)))
-//@variable     Caculation : Bollinger Bands, Lower Slow Dev Data
+//@variable     Calculation : Bollinger Bands, Lower Slow Dev Data
 bollinger_LowerSlow = request.security(syminfo.tickerid, bollinger_Timeframe,
   maSwitch(option = band_MaType, source = close, length = bollinger_Length) - (bollinger_MultSlow * ta.stdev(close, bollinger_Length)))
-//@variable     Caculation : Bollinger Bands, Upper Fast Dev Data
+//@variable     Calculation : Bollinger Bands, Upper Fast Dev Data
 bollinger_UpperFast = request.security(syminfo.tickerid, bollinger_Timeframe,
   maSwitch(option = band_MaType, source = close, length = bollinger_Length) + (bollinger_MultFast * ta.stdev(close, bollinger_Length)))
-//@variable     Caculation : Bollinger Bands, Lower Fast Dev Data
+//@variable     Calculation : Bollinger Bands, Lower Fast Dev Data
 bollinger_LowerFast = request.security(syminfo.tickerid, bollinger_Timeframe,
   maSwitch(option = band_MaType, source = close, length = bollinger_Length) - (bollinger_MultFast * ta.stdev(close, bollinger_Length)))
 

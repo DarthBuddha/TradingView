@@ -6,7 +6,7 @@ Custom Pine Script indicators focused on structure, sessions, and volume/flow co
 
 - Buddha Bollinger Bands: Multi-timeframe Bollinger envelopes with dual standard-deviation zones.
 - Buddha Bands: Four SMA bands using 20-21, 50-55, 200-233, and 365-377 ranges.
-- Buddha Money Flow: Footprint-based buy/sell/delta flow panel and histogram.
+- Buddha Money Flow: Footprint-based stacked volume panel (buy bottom, neutral center, sell top) with optional delta histogram.
 - Buddha Squeeze: TTM Squeeze style momentum/volatility oscillator.
 - Buddha Market Levels: Auto-draws key market levels.
 - Market Sessions: Session tracker for trading day structure.
@@ -22,11 +22,13 @@ What this means:
 - Buy, sell, total volume, and delta are requested from `request.footprint()`.
 - Values are generally closer to order-flow style volume accounting than a close-in-range proxy.
 - Display can keep columns above zero for readability without changing signed math.
+- Total volume is rendered as a stacked column: buy at bottom, neutral in the center, sell at top.
+- Delta histogram can be turned on when needed and is off by default to keep the stack clean.
 
 Key inputs:
 
 - Footprint: `Ticks Per Row`, `Value Area %`, `Imbalance %`
-- Display: `Show Total Volume`, `Show Table`, `Columns Above Zero`, `CVD Mode`, `CVD Window`
+- Display: `Show Total Volume`, `Show Delta Histogram`, `Show Table`, `Columns Above Zero`, `CVD Mode`, `CVD Window`
 
 Notes:
 

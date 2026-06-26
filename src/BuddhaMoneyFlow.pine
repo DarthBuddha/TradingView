@@ -63,6 +63,7 @@ i_ImbalancePct = input.float(300.0, 'Imbalance %', minval = 1.0, step = 25.0, gr
 
 const string g_Display = 'Display Settings'
 i_ShowTotalVolume = input.bool(true, 'Show Total Volume', group = g_Display)
+i_ShowDeltaHistogram = input.bool(false, 'Show Delta Histogram', group = g_Display)
 i_ShowTable = input.bool(true, 'Show Table', group = g_Display)
 i_PositiveColumnsOnly = input.bool(true, 'Columns Above Zero', group = g_Display)
 i_CvdMode = input.enum(CvdMode.Windowed, 'CVD Mode', group = g_Display)
@@ -119,6 +120,17 @@ deltaAbs = math.abs(nz(deltaValue, 0.0))
 deltaPct = totalVol > 0 ? (deltaValue / totalVol) * 100.0 : na
 buyPct = totalVol > 0 ? (buyVol / totalVol) * 100.0 : na
 sellPct = totalVol > 0 ? (sellVol / totalVol) * 100.0 : na
+
+// Decompose volume into stacked segments: buy (bottom), neutral (middle), sell (top).
+buyVolNz = nz(buyVol, 0.0)
+sellVolNz = nz(sellVol, 0.0)
+neutralCenterVol = 2.0 * math.min(buyVolNz, sellVolNz)
+buyBottomVol = math.max(buyVolNz - sellVolNz, 0.0)
+sellTopVol = math.max(sellVolNz - buyVolNz, 0.0)
+
+neutralBase = buyBottomVol
+sellBase = neutralBase + neutralCenterVol
+
 cvdRunning = ta.cum(nz(deltaValue, 0.0))
 cvdWindowed = math.sum(nz(deltaValue, 0.0), i_CvdLength)
 cvd = switch i_CvdMode
@@ -140,11 +152,20 @@ cvdBg = deltaValue >= 0
 
 //--------------------------------------------------------------------------------------------------------< PLOTs >---//
 
-// @variable - Total volume
-plot_TotalVolume = plot(i_ShowTotalVolume ? totalVol : na, 'Total Volume', cvdBg, style = plot.style_columns, display = display.pane)
+// Stacked volume segments (buy bottom, neutral center, sell top)
+buyBottomTop = buyBottomVol
+neutralTop = neutralBase + neutralCenterVol
+sellTop = sellBase + sellTopVol
+
+plotcandle(i_ShowTotalVolume ? 0.0 : na, i_ShowTotalVolume ? buyBottomTop : na, i_ShowTotalVolume ? 0.0 : na, i_ShowTotalVolume ? buyBottomTop : na,
+  title = 'Buy Volume (Bottom)', color = i_CLR_B, wickcolor = i_CLR_B, bordercolor = i_CLR_B, display = display.pane)
+plotcandle(i_ShowTotalVolume ? neutralBase : na, i_ShowTotalVolume ? neutralTop : na, i_ShowTotalVolume ? neutralBase : na, i_ShowTotalVolume ? neutralTop : na,
+  title = 'Neutral Volume (Center)', color = i_CLR_T, wickcolor = i_CLR_T, bordercolor = i_CLR_T, display = display.pane)
+plotcandle(i_ShowTotalVolume ? sellBase : na, i_ShowTotalVolume ? sellTop : na, i_ShowTotalVolume ? sellBase : na, i_ShowTotalVolume ? sellTop : na,
+  title = 'Sell Volume (Top)', color = i_CLR_S, wickcolor = i_CLR_S, bordercolor = i_CLR_S, display = display.pane)
 
 // Delta histogram (zero-centered)
-plot_VolumeDelta = plot(plotDeltaValue, 'Volume Delta', deltaColor, style = plot.style_columns, display = display.pane)
+plot_VolumeDelta = plot(i_ShowDeltaHistogram ? plotDeltaValue : na, 'Volume Delta', deltaColor, style = plot.style_columns, display = display.pane)
 
 hline(0, 'Zero', color.new(CLR_T, 65), hline.style_dotted)
 
@@ -152,7 +173,7 @@ hline(0, 'Zero', color.new(CLR_T, 65), hline.style_dotted)
 
 var t_CVD = table.new(position = position.middle_right, columns = 2, rows = 3, force_overlay = false)
 
-TW = 10
+TW = 0
 TH = 33
 
 table.set_frame_color(t_CVD, CLR_FRAME)

@@ -1,5 +1,10 @@
 # Darth Buddha's - Trading View Scripts
 
+## Version 0.0.12
+
+* Change - Buddha Money Flow. Updated volume display to stacked layout: buy on bottom, neutral in center, sell on top.
+* Change - Buddha Money Flow. Added `Show Delta Histogram` display toggle (default off) to prevent overlap with stacked volume view.
+
 ## Version 0.0.11
 
 * Change - Buddha Bollinger Bands. Optimized calculations and added to repository collection docs.
