@@ -12,7 +12,6 @@ indicator(
 
 //----------------------------------------------------------------------------------------------------< CONSTANTs >---//
 
-//----------------------------------------------------< COLORs
 // @variable - Color - Buy volume
 const color CLR_B = color.rgb(0, 128, 0)
 // @variable - Color - Sell volume
@@ -24,7 +23,8 @@ const color CLR_FRAME = color.rgb(0, 0, 0)
 // @variable - Table text color
 const color CLR_TEXT = color.rgb(0, 0, 0)
 
-//----------------------------------------------------< ENUMs
+//--------------------------------------------------------------------------------------------------------< ENUMs >---//
+
 enum State
     On = 'ON'
     Off = 'OFF'
@@ -36,12 +36,6 @@ enum Tx
     Large = 'Large'
     Huge = 'Huge'
 
-enum CvdMode
-    Off = 'Off'
-    Running = 'Running'
-    Windowed = 'Windowed'
-
-
 //-------------------------------------------------------------------------------------------------------< INPUTs >---//
 
 const string g_Colors = "Volume Color"
@@ -50,25 +44,20 @@ i_CLR_B = input.color(CLR_B, 'Buy', group = g_Colors, inline = '1')
 // @variable - User input Sell volume color
 i_CLR_S = input.color(CLR_S, 'Sell', group = g_Colors, inline = '1')
 // @variable - User input Neutral volume color
-i_CLR_T = input.color(CLR_T, 'Total', group = g_Colors, inline = '1')
-
-const string g_Table  = 'Table Settings'
-i_TbState = input.enum(State.On,'', group = g_Table, inline = '1')
-i_TxSize = input.enum(Tx.Large, '', group = g_Table, inline = '1')
+i_CLR_T = input.color(CLR_T, 'Neutral', group = g_Colors, inline = '1')
 
 const string g_Footprint = 'Footprint Settings'
 i_TicksPerRow = input.int(25, 'Ticks Per Row', minval = 1, group = g_Footprint)
 i_ValueAreaPct = input.float(70.0, 'Value Area %', minval = 1.0, maxval = 100.0, step = 1.0, group = g_Footprint)
 i_ImbalancePct = input.float(300.0, 'Imbalance %', minval = 1.0, step = 25.0, group = g_Footprint)
 
+const string g_Table  = 'Table Settings'
+i_TbState = input.enum(State.On,'', group = g_Table, inline = '1')
+i_TxSize = input.enum(Tx.Large, '', group = g_Table, inline = '1')
+
 const string g_Display = 'Display Settings'
 i_ShowTotalVolume = input.bool(true, 'Show Total Volume', group = g_Display)
-i_ShowDeltaHistogram = input.bool(false, 'Show Delta Histogram', group = g_Display)
 i_ShowTable = input.bool(true, 'Show Table', group = g_Display)
-i_PositiveColumnsOnly = input.bool(true, 'Columns Above Zero', group = g_Display)
-i_CvdMode = input.enum(CvdMode.Windowed, 'CVD Mode', group = g_Display)
-i_CvdLength = input.int(50, 'CVD Window', minval = 1, group = g_Display)
-
 
 //----------------------------------------------------------------------------------------------------< FUNCTIONs >---//
 
@@ -131,24 +120,16 @@ sellTopVol = math.max(sellVolNz - buyVolNz, 0.0)
 neutralBase = buyBottomVol
 sellBase = neutralBase + neutralCenterVol
 
-cvdRunning = ta.cum(nz(deltaValue, 0.0))
-cvdWindowed = math.sum(nz(deltaValue, 0.0), i_CvdLength)
-cvd = switch i_CvdMode
-    CvdMode.Running => cvdRunning
-    CvdMode.Windowed => cvdWindowed
-    => na
-
 // Colors for delta bars
 deltaColor = deltaValue > 0 ? i_CLR_B : deltaValue < 0 ? i_CLR_S : i_CLR_T
-
-// Output Delta Value
-plotDeltaValue = i_PositiveColumnsOnly ? deltaAbs : deltaValue
 
 vmax = math.max(nz(totalVol, 0.0), 1e-10)
 
 cvdBg = deltaValue >= 0
       ? color.from_gradient(deltaValue, 0.0,  vmax, CLR_T, color.lime)
       : color.from_gradient(deltaValue, -vmax, 0.0, color.red, CLR_T)
+
+isChartDaily = timeframe.isdaily ? true : false
 
 //--------------------------------------------------------------------------------------------------------< PLOTs >---//
 
@@ -157,15 +138,41 @@ buyBottomTop = buyBottomVol
 neutralTop = neutralBase + neutralCenterVol
 sellTop = sellBase + sellTopVol
 
-plotcandle(i_ShowTotalVolume ? 0.0 : na, i_ShowTotalVolume ? buyBottomTop : na, i_ShowTotalVolume ? 0.0 : na, i_ShowTotalVolume ? buyBottomTop : na,
-  title = 'Buy Volume (Bottom)', color = i_CLR_B, wickcolor = i_CLR_B, bordercolor = i_CLR_B, display = display.pane)
-plotcandle(i_ShowTotalVolume ? neutralBase : na, i_ShowTotalVolume ? neutralTop : na, i_ShowTotalVolume ? neutralBase : na, i_ShowTotalVolume ? neutralTop : na,
-  title = 'Neutral Volume (Center)', color = i_CLR_T, wickcolor = i_CLR_T, bordercolor = i_CLR_T, display = display.pane)
-plotcandle(i_ShowTotalVolume ? sellBase : na, i_ShowTotalVolume ? sellTop : na, i_ShowTotalVolume ? sellBase : na, i_ShowTotalVolume ? sellTop : na,
-  title = 'Sell Volume (Top)', color = i_CLR_S, wickcolor = i_CLR_S, bordercolor = i_CLR_S, display = display.pane)
+plotcandle(
+    i_ShowTotalVolume ? 0.0 : na,
+    i_ShowTotalVolume ? buyBottomTop : na,
+    i_ShowTotalVolume ? 0.0 : na,
+    i_ShowTotalVolume ? buyBottomTop : na,
+    title = 'Buy Volume (Bottom)',
+    color = i_CLR_B,
+    wickcolor = i_CLR_B,
+    bordercolor = i_CLR_B,
+    display = display.pane
+)
 
-// Delta histogram (zero-centered)
-plot_VolumeDelta = plot(i_ShowDeltaHistogram ? plotDeltaValue : na, 'Volume Delta', deltaColor, style = plot.style_columns, display = display.pane)
+plotcandle(
+    i_ShowTotalVolume ? neutralBase : na,
+    i_ShowTotalVolume ? neutralTop : na,
+    i_ShowTotalVolume ? neutralBase : na,
+    i_ShowTotalVolume ? neutralTop : na,
+    title = 'Neutral Volume (Center)',
+    color = i_CLR_T,
+    wickcolor = i_CLR_T,
+    bordercolor = i_CLR_T,
+    display = display.pane
+)
+
+plotcandle(
+    i_ShowTotalVolume ? sellBase : na,
+    i_ShowTotalVolume ? sellTop : na,
+    i_ShowTotalVolume ? sellBase : na,
+    i_ShowTotalVolume ? sellTop : na,
+    title = 'Sell Volume (Top)',
+    color = i_CLR_S,
+    wickcolor = i_CLR_S,
+    bordercolor = i_CLR_S,
+    display = display.pane
+)
 
 hline(0, 'Zero', color.new(CLR_T, 65), hline.style_dotted)
 
@@ -173,7 +180,7 @@ hline(0, 'Zero', color.new(CLR_T, 65), hline.style_dotted)
 
 var t_CVD = table.new(position = position.middle_right, columns = 2, rows = 3, force_overlay = false)
 
-TW = 0
+TW = 50
 TH = 33
 
 table.set_frame_color(t_CVD, CLR_FRAME)
@@ -181,7 +188,7 @@ table.set_border_color(t_CVD, CLR_FRAME)
 table.set_frame_width(t_CVD, 3)
 table.set_border_width(t_CVD, 5)
 
-if barstate.islast and switchState(i_TbState) and i_ShowTable
+if barstate.islast and switchState(i_TbState) and isChartDaily
     textSize = str.lower(str.tostring(i_TxSize))
 
     table.cell(t_CVD, 0, 0, str.tostring(buyVol, '#,###,###'), TW, TH, CLR_TEXT,

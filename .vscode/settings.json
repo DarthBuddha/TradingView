@@ -5,6 +5,7 @@
       "barstate",
       "bgcolor",
       "Bollinger",
+      "bordercolor",
       "defval",
       "detla",
       "Globex",
@@ -45,6 +46,7 @@
       "OHLCV",
       "orst",
       "pjxzj",
+      "plotcandle",
       "possesive",
       "premarket",
       "pric",
@@ -65,6 +67,7 @@
       "varip",
       "vmax",
       "Vwma",
+      "wickcolor",
       "XETR",
       "xloc",
       "yloc"
